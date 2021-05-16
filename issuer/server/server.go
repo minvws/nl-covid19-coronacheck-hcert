@@ -28,11 +28,11 @@ type GetCredentialResponse struct {
 	SignedCWT []byte `json:"signedCWT"`
 }
 
-var dsc *localsigner.DSC
+var ls *localsigner.LocalSigner
 
 func Serve(config *Configuration) error {
 	var err error
-	dsc, err = localsigner.LoadDSC(config.DSCCertificatePath, config.DSCKeyPath)
+	ls, err = localsigner.New(config.DSCCertificatePath, config.DSCKeyPath)
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not load DSC and private key", 0)
 	}
@@ -70,7 +70,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unixNow := time.Now().Unix()
-	unsigned, hash, err := issuer.Serialize(&issuer.ToSerialize{
+	signedCWT, err := issuer.Issue(ls, &issuer.IssueSpecification{
 		KeyIdentifier:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
@@ -78,24 +78,12 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 		DGC:            credentialRequest.DGC,
 	})
 	if err != nil {
-		writeError(w, errors.WrapPrefix(err, "Could not serialize message for signing", 0))
-		return
-	}
-
-	signature, err := localsigner.Sign(dsc, hash)
-	if err != nil {
-		writeError(w, errors.WrapPrefix(err, "Could not sign message", 0))
-		return
-	}
-
-	signedCWTCbor, err := issuer.FinalizeCWT(unsigned, signature)
-	if err != nil {
-		writeError(w, errors.WrapPrefix(err, "Could not CBOR serialize signed CWT", 0))
+		writeError(w, errors.WrapPrefix(err, "Could not issue credential", 0))
 		return
 	}
 
 	responseBody, err := json.Marshal(&GetCredentialResponse{
-		SignedCWT: signedCWTCbor,
+		SignedCWT: signedCWT,
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON marshal credential response", 0))

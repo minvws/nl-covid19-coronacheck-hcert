@@ -12,13 +12,13 @@ import (
 	"os"
 )
 
-type DSC struct {
+type LocalSigner struct {
 	Certificate *x509.Certificate
 	Key         *ecdsa.PrivateKey
 }
 
 // LoadDSC doesn't do much sanity checking, as it isn't going to be used in production
-func LoadDSC(pemCertPath, pemKeyPath string) (*DSC, error) {
+func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 	// Load certificate
 	pemCertBytes, err := os.ReadFile(pemCertPath)
 	if err != nil {
@@ -55,25 +55,26 @@ func LoadDSC(pemCertPath, pemKeyPath string) (*DSC, error) {
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 
-	return &DSC{
+	return &LocalSigner{
 		Certificate: cert,
 		Key:         key,
 	}, nil
 }
 
 // Sign doesn't do much sanity checking ,as it isn't going to be used in production
-func Sign(dsc *DSC, hash []byte) ([]byte, error) {
-	r, s, err := ecdsa.Sign(rand.Reader, dsc.Key, hash)
+func (ls *LocalSigner) Sign(hash []byte) ([]byte, error) {
+	r, s, err := ecdsa.Sign(rand.Reader, ls.Key, hash)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
 	}
 
-	keyByteSize := dsc.Key.Curve.Params().BitSize / 8
+	keyByteSize := ls.Key.Curve.Params().BitSize / 8
 	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)
 
 	return signature, nil
 }
 
+// See https://datatracker.ietf.org/doc/html/draft-ietf-cose-msg#section-8.1
 func i2osp(b *big.Int, n int) []byte {
 	ostr := b.Bytes()
 	if n > len(ostr) {

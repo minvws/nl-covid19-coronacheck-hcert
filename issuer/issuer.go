@@ -12,7 +12,12 @@ const (
 	COSE_SIGN1_TAG     = 18
 )
 
-type ToSerialize struct {
+type Signer interface {
+	Sign(hash []byte) ([]byte, error)
+}
+
+type IssueSpecification struct {
+	OID           string
 	KeyIdentifier []byte
 
 	Issuer         string
@@ -22,13 +27,32 @@ type ToSerialize struct {
 	DGC map[string]interface{}
 }
 
-// SerializeForSigning intentionally doesn't support all the different COSE bells and whistles,
-// and only does one thing well: serialize electronic health certificates for ECDSA / SHA-256 signing
-func Serialize(toSerialize *ToSerialize) (unsigned *common.SignedCWT, hash []byte, err error) {
+// Issue intentionally doesn't support all the different COSE bells and whistles, and only does
+// one thing well: serialize electronic health certificates for ECDSA / SHA-256 signing
+func Issue(signer Signer, spec *IssueSpecification) ([]byte, error) {
+	unsigned, hash, err := serialize(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signer.Sign(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	signed, err := finalize(unsigned, signature)
+	if err != nil {
+		return nil, err
+	}
+
+	return signed, nil
+}
+
+func serialize(spec *IssueSpecification) (unsigned *common.CWT, hash []byte, err error) {
 	// Build and serialize the protected header
 	header := &common.CWTHeader{
 		Alg: common.ALG_ES256,
-		Kid: toSerialize.KeyIdentifier,
+		Kid: spec.KeyIdentifier,
 	}
 
 	headerCbor, err := cbor.Marshal(header)
@@ -37,15 +61,15 @@ func Serialize(toSerialize *ToSerialize) (unsigned *common.SignedCWT, hash []byt
 	}
 
 	// Serialize DGC separately, and then the rest of the payload
-	dgcCbor, err := cbor.Marshal(toSerialize.DGC)
+	dgcCbor, err := cbor.Marshal(spec.DGC)
 	if err != nil {
 		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal DGC", 0)
 	}
 
 	payload := &common.CWTPayload{
-		Issuer:         toSerialize.Issuer,
-		ExpirationTime: toSerialize.ExpirationTime,
-		IssuedAt:       toSerialize.IssuedAt,
+		Issuer:         spec.Issuer,
+		ExpirationTime: spec.ExpirationTime,
+		IssuedAt:       spec.IssuedAt,
 		HCert: &common.HealthCertificate{
 			DGCv1: dgcCbor,
 		},
@@ -72,7 +96,7 @@ func Serialize(toSerialize *ToSerialize) (unsigned *common.SignedCWT, hash []byt
 	hash = hashArr[:]
 
 	// Build the yet unsigned CWT
-	unsigned = &common.SignedCWT{
+	unsigned = &common.CWT{
 		Protected: headerCbor,
 		Payload:   payloadCbor,
 	}
@@ -80,8 +104,8 @@ func Serialize(toSerialize *ToSerialize) (unsigned *common.SignedCWT, hash []byt
 	return unsigned, hash, nil
 }
 
-func FinalizeCWT(unsigned *common.SignedCWT, signature []byte) ([]byte, error) {
-	signedCWT := &common.SignedCWT{
+func finalize(unsigned *common.CWT, signature []byte) ([]byte, error) {
+	signedCWT := &common.CWT{
 		Protected: unsigned.Protected,
 		Payload:   unsigned.Payload,
 		Signature: signature,

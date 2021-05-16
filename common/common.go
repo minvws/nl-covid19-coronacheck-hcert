@@ -7,7 +7,7 @@ const (
 	ALG_PS256 = -37
 )
 
-type SignedCWT struct {
+type CWT struct {
 	_           struct{} `cbor:",toarray"`
 	Protected   []byte
 	Unprotected CWTHeader
