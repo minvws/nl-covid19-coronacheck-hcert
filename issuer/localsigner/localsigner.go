@@ -17,7 +17,7 @@ type LocalSigner struct {
 	Key         *ecdsa.PrivateKey
 }
 
-// LoadDSC doesn't do much sanity checking, as it isn't going to be used in production
+// New doesn't do much sanity checking, as it isn't going to be used in production
 func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 	// Load certificate
 	pemCertBytes, err := os.ReadFile(pemCertPath)
@@ -61,7 +61,7 @@ func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 	}, nil
 }
 
-// Sign doesn't do much sanity checking ,as it isn't going to be used in production
+// Sign doesn't do much sanity checking, as it isn't going to be used in production
 func (ls *LocalSigner) Sign(hash []byte) ([]byte, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, ls.Key, hash)
 	if err != nil {
