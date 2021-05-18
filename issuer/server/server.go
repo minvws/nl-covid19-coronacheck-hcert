@@ -26,8 +26,6 @@ type GetCredentialRequest struct {
 }
 
 type GetCredentialResponse struct {
-	IssuedAt       int64  `json:"issuedAt"`
-	ExpirationTime int64  `json:"expirationTime"`
 	Credential     string `json:"credential"`
 }
 
@@ -93,8 +91,6 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseBody, err := json.Marshal(&GetCredentialResponse{
-		IssuedAt:       unixNow,
-		ExpirationTime: expirationTime,
 		Credential:     string(credential),
 	})
 	if err != nil {
