@@ -34,7 +34,7 @@ func setServerFlags(cmd *cobra.Command) {
 
 	flags.String("config", "", "path to configuration file")
 	flags.String("listen-address", "localhost", "address at which to listen")
-	flags.String("listen-port", "8080", "port at which to listen")
+	flags.String("listen-port", "4002", "port at which to listen")
 	flags.String("dsc-certificate-path", "./Health_DSC_valid_for_vaccinations.pem", "DSC certficate PEM file")
 	flags.String("dsc-key-path", "./Health_DSC_valid_for_vaccinations.key", "DSC EC key PEM file")
 }

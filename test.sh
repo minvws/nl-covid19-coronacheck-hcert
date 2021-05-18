@@ -24,4 +24,4 @@ curl -X POST -H "Content-Type: application/json" -d '{
         }
     ]
   }
-}' http://localhost:8080/get_credential
+}' http://localhost:4002/get_credential

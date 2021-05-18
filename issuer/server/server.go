@@ -28,7 +28,7 @@ type GetCredentialRequest struct {
 type GetCredentialResponse struct {
 	IssuedAt       int64  `json:"issuedAt"`
 	ExpirationTime int64  `json:"expirationTime"`
-	QrData         string `json:"qrData"`
+	Credential     string `json:"credential"`
 }
 
 var ls *localsigner.LocalSigner
@@ -87,7 +87,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	qrData, nil := common.MarshalQREncoded(signedCWT)
+	credential, nil := common.MarshalQREncoded(signedCWT)
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not QR encode credential", 0))
 	}
@@ -95,7 +95,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	responseBody, err := json.Marshal(&GetCredentialResponse{
 		IssuedAt:       unixNow,
 		ExpirationTime: expirationTime,
-		QrData:         string(qrData),
+		Credential:     string(credential),
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON marshal credential response", 0))
