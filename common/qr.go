@@ -2,12 +2,55 @@ package common
 
 import (
 	"bytes"
+	"compress/flate"
 	"compress/zlib"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"github.com/minvws/base45-go/eubase45"
 	"io/ioutil"
 )
+
+const (
+	COSE_SIGN1_TAG     = 18
+	CURRENT_CONTEXT_ID = '1'
+)
+
+func MarshalQREncoded(signedCWT *CWT) ([]byte, error) {
+	// CBOR marshal
+	proofCbor, err := cbor.Marshal(cbor.Tag{
+		Number:  COSE_SIGN1_TAG,
+		Content: signedCWT,
+	})
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not CBOR serialize CWT", 0)
+	}
+
+	// Zlib compress
+	var proofCompressed bytes.Buffer
+	zw, err := zlib.NewWriterLevel(&proofCompressed, flate.BestCompression)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not create zlib writer", 0)
+	}
+
+	_, err = zw.Write(proofCbor)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not write to zlib writer", 0)
+	}
+
+	err = zw.Close()
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not close zlib writer", 0)
+	}
+
+	// EUBase45 encode proof
+	proofEUBase45 := eubase45.EUBase45Encode(proofCompressed.Bytes())
+
+	// Prefix
+	prefix := append([]byte{'H', 'C'}, CURRENT_CONTEXT_ID, ':')
+	prefixedProof := append(prefix, proofEUBase45...)
+
+	return prefixedProof, nil
+}
 
 func UnmarshalQREncoded(proofPrefixed []byte) (*CWT, error) {
 	// Extract context identifier
@@ -35,7 +78,7 @@ func UnmarshalQREncoded(proofPrefixed []byte) (*CWT, error) {
 
 	proofCbor, err := ioutil.ReadAll(zr)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not deflate QR", 0)
+		return nil, errors.WrapPrefix(err, "Could not decompress QR", 0)
 	}
 
 	// Unmarshal CWT
@@ -46,16 +89,6 @@ func UnmarshalQREncoded(proofPrefixed []byte) (*CWT, error) {
 	}
 
 	return cwt, nil
-}
-
-func UnmarshalCWTPayload(payloadCbor []byte) (*CWTPayload, error) {
-	var payload *CWTPayload
-	err := cbor.Unmarshal(payloadCbor, payload)
-	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal CWT payload", 0)
-	}
-
-	return payload, nil
 }
 
 func extractContextId(proofPrefixed []byte) (contextId byte, proofEUBase45 []byte, err error) {

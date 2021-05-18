@@ -1,6 +1,9 @@
 package common
 
-import "github.com/fxamacker/cbor/v2"
+import (
+	"github.com/fxamacker/cbor/v2"
+	"github.com/go-errors/errors"
+)
 
 const (
 	ALG_ES256 = -7
@@ -30,4 +33,14 @@ type CWTPayload struct {
 
 type HealthCertificate struct {
 	DGCv1 cbor.RawMessage `cbor:"1,keyasint"`
+}
+
+func UnmarshalCWTPayload(payloadCbor []byte) (*CWTPayload, error) {
+	var payload *CWTPayload
+	err := cbor.Unmarshal(payloadCbor, payload)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal CWT payload", 0)
+	}
+
+	return payload, nil
 }

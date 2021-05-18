@@ -9,7 +9,6 @@ import (
 
 const (
 	COSE_SIGN1_CONTEXT = "Signature1"
-	COSE_SIGN1_TAG     = 18
 )
 
 type Signer interface {
@@ -29,7 +28,7 @@ type IssueSpecification struct {
 
 // Issue intentionally doesn't support all the different COSE bells and whistles, and only does
 // one thing well: serialize electronic health certificates for ECDSA / SHA-256 signing
-func Issue(signer Signer, spec *IssueSpecification) ([]byte, error) {
+func Issue(signer Signer, spec *IssueSpecification) (signed *common.CWT, err error) {
 	unsigned, hash, err := serialize(spec)
 	if err != nil {
 		return nil, err
@@ -40,9 +39,10 @@ func Issue(signer Signer, spec *IssueSpecification) ([]byte, error) {
 		return nil, err
 	}
 
-	signed, err := finalize(unsigned, signature)
-	if err != nil {
-		return nil, err
+	signed = &common.CWT{
+		Protected: unsigned.Protected,
+		Payload:   unsigned.Payload,
+		Signature: signature,
 	}
 
 	return signed, nil
@@ -102,22 +102,4 @@ func serialize(spec *IssueSpecification) (unsigned *common.CWT, hash []byte, err
 	}
 
 	return unsigned, hash, nil
-}
-
-func finalize(unsigned *common.CWT, signature []byte) ([]byte, error) {
-	signedCWT := &common.CWT{
-		Protected: unsigned.Protected,
-		Payload:   unsigned.Payload,
-		Signature: signature,
-	}
-
-	signedCWTCbor, err := cbor.Marshal(cbor.Tag{
-		Number:  COSE_SIGN1_TAG,
-		Content: signedCWT,
-	})
-	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not CBOR serialize signed CWT", 0)
-	}
-
-	return signedCWTCbor, nil
 }

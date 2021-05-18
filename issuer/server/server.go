@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"net/http"
@@ -20,12 +21,14 @@ type Configuration struct {
 
 type GetCredentialRequest struct {
 	CertificateOID string                 `json:"oid"`
-	ExpiryTime     int64                  `json:"exp"`
+	ExpirationTime int64                  `json:"expirationTime"`
 	DGC            map[string]interface{} `json:"dgc"`
 }
 
 type GetCredentialResponse struct {
-	SignedCWT []byte `json:"signedCWT"`
+	IssuedAt       int64  `json:"issuedAt"`
+	ExpirationTime int64  `json:"expirationTime"`
+	QrData         string `json:"qrData"`
 }
 
 var ls *localsigner.LocalSigner
@@ -70,11 +73,13 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unixNow := time.Now().Unix()
+	expirationTime := unixNow + 180*24*60*60
+
 	signedCWT, err := issuer.Issue(ls, &issuer.IssueSpecification{
 		KeyIdentifier:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
-		ExpirationTime: unixNow + 180*24*60*60,
+		ExpirationTime: expirationTime,
 		DGC:            credentialRequest.DGC,
 	})
 	if err != nil {
@@ -82,8 +87,15 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	qrData, nil := common.MarshalQREncoded(signedCWT)
+	if err != nil {
+		writeError(w, errors.WrapPrefix(err, "Could not QR encode credential", 0))
+	}
+
 	responseBody, err := json.Marshal(&GetCredentialResponse{
-		SignedCWT: signedCWT,
+		IssuedAt:       unixNow,
+		ExpirationTime: expirationTime,
+		QrData:         string(qrData),
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON marshal credential response", 0))
