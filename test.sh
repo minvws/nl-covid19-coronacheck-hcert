@@ -1,5 +1,5 @@
 curl -X POST -H "Content-Type: application/json" -d '{
-  "exp": 1630000000,
+  "expirationTime": "2021-05-19T12:34:56Z",
   "dgc": {
     "ver": "1.0.0",
     "nam": {

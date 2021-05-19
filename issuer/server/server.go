@@ -21,12 +21,12 @@ type Configuration struct {
 
 type GetCredentialRequest struct {
 	CertificateOID string                 `json:"oid"`
-	ExpirationTime int64                  `json:"expirationTime"`
+	ExpirationTime string                 `json:"expirationTime"`
 	DGC            map[string]interface{} `json:"dgc"`
 }
 
 type GetCredentialResponse struct {
-	Credential     string `json:"credential"`
+	Credential string `json:"credential"`
 }
 
 var ls *localsigner.LocalSigner
@@ -71,13 +71,17 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unixNow := time.Now().Unix()
-	expirationTime := unixNow + 180*24*60*60
+	expirationTime, err := time.Parse(time.RFC3339, credentialRequest.ExpirationTime)
+	if err != nil {
+		writeError(w, errors.WrapPrefix(err, "Could not parse expirationTime", 0))
+		return
+	}
 
 	signedCWT, err := issuer.Issue(ls, &issuer.IssueSpecification{
 		KeyIdentifier:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
-		ExpirationTime: expirationTime,
+		ExpirationTime: expirationTime.Unix(),
 		DGC:            credentialRequest.DGC,
 	})
 	if err != nil {
@@ -91,7 +95,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseBody, err := json.Marshal(&GetCredentialResponse{
-		Credential:     string(credential),
+		Credential: string(credential),
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON marshal credential response", 0))
