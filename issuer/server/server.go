@@ -20,7 +20,7 @@ type Configuration struct {
 }
 
 type GetCredentialRequest struct {
-	CertificateOID string                 `json:"oid"`
+	KeyUsage       string                 `json:"keyUsage"`
 	ExpirationTime string                 `json:"expirationTime"`
 	DGC            map[string]interface{} `json:"dgc"`
 }
@@ -78,7 +78,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signedCWT, err := issuer.Issue(ls, &issuer.IssueSpecification{
-		KeyIdentifier:  []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+		KeyUsage:       credentialRequest.KeyUsage,
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
 		ExpirationTime: expirationTime.Unix(),

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 type LocalSigner struct {
 	Certificate *x509.Certificate
 	Key         *ecdsa.PrivateKey
+	KID         []byte
 }
 
 // New doesn't do much sanity checking, as it isn't going to be used in production
@@ -55,10 +57,19 @@ func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 
+	// Calculate KID
+	certSum := sha256.Sum256(pemCertBlock.Bytes)
+	kid := certSum[0:8]
+
 	return &LocalSigner{
 		Certificate: cert,
 		Key:         key,
+		KID:         kid,
 	}, nil
+}
+
+func (ls *LocalSigner) GetKID(keyUsage string) ([]byte, error) {
+	return ls.KID, nil
 }
 
 // Sign doesn't do much sanity checking, as it isn't going to be used in production

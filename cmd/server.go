@@ -32,7 +32,7 @@ func setServerFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.SortFlags = false
 
-	flags.String("config", "", "path to configuration file")
+	flags.String("config", "", "path to configuration file (JSON, TOML, YAML or INI)")
 	flags.String("listen-address", "localhost", "address at which to listen")
 	flags.String("listen-port", "4002", "port at which to listen")
 	flags.String("dsc-certificate-path", "./Health_DSC_valid_for_vaccinations.pem", "DSC certficate PEM file")

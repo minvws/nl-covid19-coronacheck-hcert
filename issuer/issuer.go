@@ -12,12 +12,12 @@ const (
 )
 
 type Signer interface {
-	Sign(hash []byte) ([]byte, error)
+	GetKID(keyUsage string) (kid []byte, err error)
+	Sign(hash []byte) (signature []byte, err error)
 }
 
 type IssueSpecification struct {
-	OID           string
-	KeyIdentifier []byte
+	KeyUsage string
 
 	Issuer         string
 	IssuedAt       int64
@@ -29,7 +29,12 @@ type IssueSpecification struct {
 // Issue intentionally doesn't support all the different COSE bells and whistles, and only does
 // one thing well: serialize electronic health certificates for ECDSA / SHA-256 signing
 func Issue(signer Signer, spec *IssueSpecification) (signed *common.CWT, err error) {
-	unsigned, hash, err := serialize(spec)
+	kid, err := signer.GetKID(spec.KeyUsage)
+	if err != nil {
+		return nil, err
+	}
+
+	unsigned, hash, err := serialize(kid, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +53,11 @@ func Issue(signer Signer, spec *IssueSpecification) (signed *common.CWT, err err
 	return signed, nil
 }
 
-func serialize(spec *IssueSpecification) (unsigned *common.CWT, hash []byte, err error) {
+func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash []byte, err error) {
 	// Build and serialize the protected header
 	header := &common.CWTHeader{
 		Alg: common.ALG_ES256,
-		Kid: spec.KeyIdentifier,
+		KID: kid,
 	}
 
 	headerCbor, err := cbor.Marshal(header)
