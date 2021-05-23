@@ -16,6 +16,10 @@ type Signer interface {
 	Sign(hash []byte) (signature []byte, err error)
 }
 
+type Issuer struct {
+	signer Signer
+}
+
 type IssueSpecification struct {
 	KeyUsage string
 
@@ -26,10 +30,16 @@ type IssueSpecification struct {
 	DGC map[string]interface{}
 }
 
+func New(signer Signer) *Issuer {
+	return &Issuer{
+		signer: signer,
+	}
+}
+
 // Issue intentionally doesn't support all the different COSE bells and whistles, and only does
 // one thing well: serialize electronic health certificates for ECDSA / SHA-256 signing
-func Issue(signer Signer, spec *IssueSpecification) (signed *common.CWT, err error) {
-	kid, err := signer.GetKID(spec.KeyUsage)
+func (iss *Issuer) Issue(spec *IssueSpecification) (signed *common.CWT, err error) {
+	kid, err := iss.signer.GetKID(spec.KeyUsage)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +49,7 @@ func Issue(signer Signer, spec *IssueSpecification) (signed *common.CWT, err err
 		return nil, err
 	}
 
-	signature, err := signer.Sign(hash)
+	signature, err := iss.signer.Sign(hash)
 	if err != nil {
 		return nil, err
 	}

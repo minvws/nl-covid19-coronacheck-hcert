@@ -16,7 +16,7 @@ var serverCmd = &cobra.Command{
 			exitWithError(err)
 		}
 
-		err = server.Serve(config)
+		err = server.Run(config)
 		if err != nil {
 			exitWithError(err)
 		}

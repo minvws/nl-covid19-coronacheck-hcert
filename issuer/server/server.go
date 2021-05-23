@@ -19,6 +19,11 @@ type Configuration struct {
 	DSCKeyPath         string
 }
 
+type server struct {
+	config *Configuration
+	issuer *issuer.Issuer
+}
+
 type GetCredentialRequest struct {
 	KeyUsage       string                 `json:"keyUsage"`
 	ExpirationTime string                 `json:"expirationTime"`
@@ -29,20 +34,36 @@ type GetCredentialResponse struct {
 	Credential string `json:"credential"`
 }
 
-var ls *localsigner.LocalSigner
-
-func Serve(config *Configuration) error {
+func Run(config *Configuration) error {
+	// Create local signer and issuer
 	var err error
-	ls, err = localsigner.New(config.DSCCertificatePath, config.DSCKeyPath)
+	localSigner, err := localsigner.New(config.DSCCertificatePath, config.DSCKeyPath)
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not load DSC and private key", 0)
 	}
 
-	addr := fmt.Sprintf("%s:%s", config.ListenAddress, config.ListenPort)
+	iss := issuer.New(localSigner)
+
+	// Serve
+	s := &server{
+		config: config,
+		issuer: iss,
+	}
+
+	err = s.Serve()
+	if err != nil {
+		return errors.WrapPrefix(err, "Could not start server", 0)
+	}
+
+	return nil
+}
+
+func (s *server) Serve() error {
+	addr := fmt.Sprintf("%s:%s", s.config.ListenAddress, s.config.ListenPort)
 	fmt.Printf("Starting server, listening at %s\n", addr)
 
-	handler := buildHandler()
-	err = http.ListenAndServe(addr, handler)
+	handler := s.buildHandler()
+	err := http.ListenAndServe(addr, handler)
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not start listening", 0)
 	}
@@ -50,14 +71,14 @@ func Serve(config *Configuration) error {
 	return nil
 }
 
-func buildHandler() *http.ServeMux {
+func (s *server) buildHandler() *http.ServeMux {
 	handler := http.NewServeMux()
-	handler.HandleFunc("/get_credential", getCredential)
+	handler.HandleFunc("/get_credential", s.getCredential)
 
 	return handler
 }
 
-func getCredential(w http.ResponseWriter, r *http.Request) {
+func (s *server) getCredential(w http.ResponseWriter, r *http.Request) {
 	credentialRequest := &GetCredentialRequest{}
 	err := json.NewDecoder(r.Body).Decode(credentialRequest)
 	if err != nil {
@@ -77,7 +98,7 @@ func getCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedCWT, err := issuer.Issue(ls, &issuer.IssueSpecification{
+	signedCWT, err := s.issuer.Issue(&issuer.IssueSpecification{
 		KeyUsage:       credentialRequest.KeyUsage,
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
