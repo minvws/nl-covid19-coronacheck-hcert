@@ -50,6 +50,11 @@ func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
 		dir, file := filepath.Dir(configPath), filepath.Base(configPath)
 		viper.SetConfigName(strings.TrimSuffix(file, filepath.Ext(file)))
 		viper.AddConfigPath(dir)
+
+		err = viper.ReadInConfig()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	config := &server.Configuration{
