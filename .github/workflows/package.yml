@@ -26,7 +26,7 @@ jobs:
         run: 'echo "{ \"version\": \"${{ env.RELEASE_VERSION }}\", \"git_ref\": \"$GITHUB_SHA\"}" > release/version.json'
 
       - name: Create tar
-        run: tar -czf coronacheck-hcert_${{ env.RELEASE_VERSION }}.tar.gz ./release/*
+        run: cd release && tar -czf ../coronacheck_hcert_${{ env.RELEASE_VERSION }}.tar.gz ./
 
       - name: Upload release tar
         uses: actions/upload-artifact@v1
