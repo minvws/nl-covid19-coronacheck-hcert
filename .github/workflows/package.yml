@@ -31,5 +31,5 @@ jobs:
       - name: Upload release tar
         uses: actions/upload-artifact@v1
         with:
-          name: coronacheck-hcert_${{ env.RELEASE_VERSION }}
-          path: coronacheck-hcert_${{ env.RELEASE_VERSION }}.tar.gz
+          name: coronacheck_hcert_${{ env.RELEASE_VERSION }}
+          path: coronacheck_hcert_${{ env.RELEASE_VERSION }}.tar.gz
