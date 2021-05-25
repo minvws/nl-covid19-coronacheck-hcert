@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -53,7 +55,8 @@ func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
 
 		err = viper.ReadInConfig()
 		if err != nil {
-			return nil, err
+			msg := fmt.Sprintf("Could not read or apply config file %s", configPath)
+			return nil, errors.WrapPrefix(err, msg, 0)
 		}
 	}
 

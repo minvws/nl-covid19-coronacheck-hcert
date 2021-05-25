@@ -39,7 +39,7 @@ func Run(config *Configuration) error {
 	var err error
 	localSigner, err := localsigner.New(config.DSCCertificatePath, config.DSCKeyPath)
 	if err != nil {
-		return errors.WrapPrefix(err, "Could not load DSC and private key", 0)
+		return errors.WrapPrefix(err, "Could not create local signer", 0)
 	}
 
 	iss := issuer.New(localSigner)
@@ -73,16 +73,16 @@ func (s *server) Serve() error {
 
 func (s *server) buildHandler() *http.ServeMux {
 	handler := http.NewServeMux()
-	handler.HandleFunc("/get_credential", s.getCredential)
+	handler.HandleFunc("/get_credential", s.handleGetCredential)
 
 	return handler
 }
 
-func (s *server) getCredential(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	credentialRequest := &GetCredentialRequest{}
 	err := json.NewDecoder(r.Body).Decode(credentialRequest)
 	if err != nil {
-		writeError(w, errors.WrapPrefix(err, "Could not decode credentialRequest", 0))
+		writeError(w, errors.WrapPrefix(err, "Could not JSON unmarshal credentialRequest", 0))
 		return
 	}
 
@@ -115,7 +115,7 @@ func (s *server) getCredential(w http.ResponseWriter, r *http.Request) {
 		writeError(w, errors.WrapPrefix(err, "Could not QR encode credential", 0))
 	}
 
-	responseBody, err := json.Marshal(&GetCredentialResponse{
+	responseJson, err := json.Marshal(&GetCredentialResponse{
 		Credential: string(credential),
 	})
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *server) getCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
-	_, _ = w.Write(responseBody)
+	_, _ = w.Write(responseJson)
 }
 
 func writeError(w http.ResponseWriter, err error) {

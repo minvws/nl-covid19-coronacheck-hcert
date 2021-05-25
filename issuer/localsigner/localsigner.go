@@ -14,9 +14,9 @@ import (
 )
 
 type LocalSigner struct {
-	Certificate *x509.Certificate
-	Key         *ecdsa.PrivateKey
-	KID         []byte
+	certificate *x509.Certificate
+	key         *ecdsa.PrivateKey
+	kid         []byte
 }
 
 // New doesn't do much sanity checking, as it isn't going to be used in production
@@ -62,24 +62,24 @@ func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 	kid := certSum[0:8]
 
 	return &LocalSigner{
-		Certificate: cert,
-		Key:         key,
-		KID:         kid,
+		certificate: cert,
+		key:         key,
+		kid:         kid,
 	}, nil
 }
 
 func (ls *LocalSigner) GetKID(keyUsage string) ([]byte, error) {
-	return ls.KID, nil
+	return ls.kid, nil
 }
 
 // Sign doesn't do much sanity checking, as it isn't going to be used in production
 func (ls *LocalSigner) Sign(hash []byte) ([]byte, error) {
-	r, s, err := ecdsa.Sign(rand.Reader, ls.Key, hash)
+	r, s, err := ecdsa.Sign(rand.Reader, ls.key, hash)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
 	}
 
-	keyByteSize := ls.Key.Curve.Params().BitSize / 8
+	keyByteSize := ls.key.Curve.Params().BitSize / 8
 	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)
 
 	return signature, nil
