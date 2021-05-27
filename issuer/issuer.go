@@ -27,13 +27,27 @@ type IssueSpecification struct {
 	IssuedAt       int64
 	ExpirationTime int64
 
-	DGC map[string]interface{}
+	DCC map[string]interface{}
 }
 
 func New(signer Signer) *Issuer {
 	return &Issuer{
 		signer: signer,
 	}
+}
+
+func (iss *Issuer) IssueQREncoded(spec *IssueSpecification) ([]byte, error) {
+	signed, err := iss.Issue(spec)
+	if err != nil {
+		return nil, err
+	}
+
+	signedQREncoded, err := common.MarshalQREncoded(signed)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not QR encode credential", 0)
+	}
+
+	return signedQREncoded, nil
 }
 
 // Issue intentionally doesn't support all the different COSE bells and whistles, and only does
@@ -75,10 +89,10 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal CWT header", 0)
 	}
 
-	// Serialize DGC separately, and then the rest of the payload
-	dgcCbor, err := cbor.Marshal(spec.DGC)
+	// Serialize DCC separately, and then the rest of the payload
+	dgcCbor, err := cbor.Marshal(spec.DCC)
 	if err != nil {
-		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal DGC", 0)
+		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal DCC", 0)
 	}
 
 	payload := &common.CWTPayload{

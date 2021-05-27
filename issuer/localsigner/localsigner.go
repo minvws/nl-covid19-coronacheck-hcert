@@ -19,23 +19,12 @@ type LocalSigner struct {
 	kid         []byte
 }
 
-// New doesn't do much sanity checking, as it isn't going to be used in production
-func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
+// NewFromFile doesn't do much sanity checking, as it isn't going to be used in production
+func NewFromFile(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 	// Load certificate
 	pemCertBytes, err := os.ReadFile(pemCertPath)
 	if err != nil {
 		msg := fmt.Sprintf("Could not read PEM certificate file %s", pemCertPath)
-		return nil, errors.WrapPrefix(err, msg, 0)
-	}
-
-	pemCertBlock, _ := pem.Decode(pemCertBytes)
-	if pemCertBlock == nil || pemCertBlock.Type != "CERTIFICATE" {
-		return nil, errors.Errorf("Could not parse PEM file %s as certificate", pemCertPath)
-	}
-
-	cert, err := x509.ParseCertificate(pemCertBlock.Bytes)
-	if err != nil {
-		msg := fmt.Sprintf("Could not parse certificate inside PEM file %s", pemCertPath)
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 
@@ -46,15 +35,36 @@ func New(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 
+	ls, err := New(pemCertBytes, pemKeyBytes)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not create local signer", 0)
+	}
+
+	return ls, nil
+}
+
+// New doesn't do much sanity checking, as it isn't going to be used in production
+func New(pemCertBytes, pemKeyBytes []byte) (*LocalSigner, error) {
+	// Load certificate
+	pemCertBlock, _ := pem.Decode(pemCertBytes)
+	if pemCertBlock == nil || pemCertBlock.Type != "CERTIFICATE" {
+		return nil, errors.Errorf("Could not parse PEM as certificate")
+	}
+
+	cert, err := x509.ParseCertificate(pemCertBlock.Bytes)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not parse certificate inside PEM", 0)
+	}
+
+	// Load private key
 	pemKeyBlock, _ := pem.Decode(pemKeyBytes)
 	if pemKeyBlock == nil || pemKeyBlock.Type != "EC PRIVATE KEY" {
-		return nil, errors.Errorf("Could not parse PEM file %s as EC key", pemKeyPath)
+		return nil, errors.Errorf("Could not parse PEM as EC key")
 	}
 
 	key, err := x509.ParseECPrivateKey(pemKeyBlock.Bytes)
 	if err != nil {
-		msg := fmt.Sprintf("Could not parse key inside PEM file %s", pemKeyPath)
-		return nil, errors.WrapPrefix(err, msg, 0)
+		return nil, errors.WrapPrefix(err, "Could not parse key inside PEM", 0)
 	}
 
 	// Calculate KID

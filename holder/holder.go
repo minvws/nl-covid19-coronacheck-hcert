@@ -18,7 +18,7 @@ func ReadCredential(proofPrefixed []byte) (dgcJson []byte, err error) {
 		return nil, err
 	}
 
-	// Reserialize DGC as JSON
+	// Reserialize DCC as JSON
 	var intermediate map[string]interface{}
 	err = cbor.Unmarshal(payload.HCert.DGCv1, intermediate)
 	if err != nil {
@@ -27,7 +27,7 @@ func ReadCredential(proofPrefixed []byte) (dgcJson []byte, err error) {
 
 	dgcJson, err = json.Marshal(intermediate)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not JSON marshal DGC intermediate", 0)
+		return nil, errors.WrapPrefix(err, "Could not JSON marshal DCC intermediate", 0)
 	}
 
 	return dgcJson, nil

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
-	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"net/http"
@@ -37,7 +36,7 @@ type GetCredentialResponse struct {
 func Run(config *Configuration) error {
 	// Create local signer and issuer
 	var err error
-	localSigner, err := localsigner.New(config.DSCCertificatePath, config.DSCKeyPath)
+	localSigner, err := localsigner.NewFromFile(config.DSCCertificatePath, config.DSCKeyPath)
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not create local signer", 0)
 	}
@@ -87,7 +86,7 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(credentialRequest.DGC) == 0 {
-		writeError(w, errors.Errorf("Refusing to sign empty DGC"))
+		writeError(w, errors.Errorf("Refusing to sign empty DCC"))
 		return
 	}
 
@@ -98,21 +97,16 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedCWT, err := s.issuer.Issue(&issuer.IssueSpecification{
+	credential, err := s.issuer.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage:       credentialRequest.KeyUsage,
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
 		ExpirationTime: expirationTime.Unix(),
-		DGC:            credentialRequest.DGC,
+		DCC:            credentialRequest.DGC,
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not issue credential", 0))
 		return
-	}
-
-	credential, nil := common.MarshalQREncoded(signedCWT)
-	if err != nil {
-		writeError(w, errors.WrapPrefix(err, "Could not QR encode credential", 0))
 	}
 
 	responseJson, err := json.Marshal(&GetCredentialResponse{
