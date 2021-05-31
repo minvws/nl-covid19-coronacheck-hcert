@@ -38,15 +38,16 @@ func Read(cwt *common.CWT) (hcertJson []byte, err error) {
 
 	// Insert CWT fields into top level structure
 	hcert := map[string]interface{}{
-		"issuer":         payload.Issuer,
-		"issuedAt":       payload.IssuedAt,
-		"expirationTime": payload.ExpirationTime,
-		"dcc":            dcc,
+		"credentialVersion": 1,
+		"issuer":            payload.Issuer,
+		"issuedAt":          payload.IssuedAt,
+		"expirationTime":    payload.ExpirationTime,
+		"dcc":               dcc,
 	}
 
 	hcertJson, err = json.Marshal(hcert)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not JSON marshal DCC intermediate", 0)
+		return nil, errors.WrapPrefix(err, "Could not JSON marshal hcert", 0)
 	}
 
 	return hcertJson, nil
