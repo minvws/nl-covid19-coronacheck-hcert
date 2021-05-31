@@ -91,6 +91,11 @@ func UnmarshalQREncoded(proofPrefixed []byte) (*CWT, error) {
 	return cwt, nil
 }
 
+func HasEUPrefix(bts []byte) bool {
+	_, _, err := extractContextId(bts)
+	return err == nil
+}
+
 func extractContextId(proofPrefixed []byte) (contextId byte, proofEUBase45 []byte, err error) {
 	if len(proofPrefixed) < 4 {
 		return 0x00, nil, errors.Errorf("Could not process abnormally short QR")
