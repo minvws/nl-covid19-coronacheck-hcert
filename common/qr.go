@@ -96,7 +96,7 @@ func extractContextId(proofPrefixed []byte) (contextId byte, proofEUBase45 []byt
 		return 0x00, nil, errors.Errorf("Could not process abnormally short QR")
 	}
 
-	if proofPrefixed[0] != 'H' || proofPrefixed[1] != 'C' || proofPrefixed[3] == ':' {
+	if proofPrefixed[0] != 'H' || proofPrefixed[1] != 'C' || proofPrefixed[3] != ':' {
 		return 0x00, nil, errors.Errorf("QR is not prefixed as a EU Health Credential")
 	}
 

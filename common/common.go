@@ -37,7 +37,7 @@ type HealthCertificate struct {
 
 func UnmarshalCWTPayload(payloadCbor []byte) (*CWTPayload, error) {
 	var payload *CWTPayload
-	err := cbor.Unmarshal(payloadCbor, payload)
+	err := cbor.Unmarshal(payloadCbor, &payload)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal CWT payload", 0)
 	}

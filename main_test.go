@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"github.com/go-errors/errors"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/holder"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"testing"
@@ -17,7 +20,7 @@ func TestSmoke(t *testing.T) {
 	iss := issuer.New(ls)
 
 	// Issue
-	_, err = iss.IssueQREncoded(&issuer.IssueSpecification{
+	qr, err := iss.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage: "vaccination",
 
 		Issuer:         "NL",
@@ -29,6 +32,15 @@ func TestSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatal("Could not issue QR encoded:", err.Error())
 	}
+
+	// Read
+	foo, err := holder.ReadQREncoded(qr)
+	if err != nil {
+		fmt.Println(err.(*errors.Error).ErrorStack())
+		t.Fatal("Could not read back QR encoded credential:", err.Error())
+	}
+
+	fmt.Println(string(foo))
 }
 
 var certificatePem = []byte(`
