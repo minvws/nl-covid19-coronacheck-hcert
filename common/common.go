@@ -19,8 +19,8 @@ type CWT struct {
 }
 
 type CWTHeader struct {
-	Alg int    `cbor:"1,keyasint"`
-	KID []byte `cbor:"4,keyasint"`
+	Alg int    `cbor:"1,keyasint,omitempty"`
+	KID []byte `cbor:"4,keyasint,omitempty"`
 }
 
 type CWTPayload struct {
