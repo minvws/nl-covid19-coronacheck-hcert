@@ -53,7 +53,7 @@ func TestSmoke(t *testing.T) {
 	}
 
 	v := verifier.New(findIssuerPk)
-	err = v.VerifyQREncoded(qr)
+	_, err = v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
 	}

@@ -35,11 +35,11 @@ type CWTPayload struct {
 	ExpirationTime int64  `cbor:"4,keyasint"`
 	IssuedAt       int64  `cbor:"6,keyasint"`
 
-	HCert *HealthCertificate `cbor:"-260,keyasint"`
+	HCert *RawHealthCertificate `cbor:"-260,keyasint"`
 }
 
-type HealthCertificate struct {
-	DGCv1 cbor.RawMessage `cbor:"1,keyasint"`
+type RawHealthCertificate struct {
+	DCC cbor.RawMessage `cbor:"1,keyasint"`
 }
 
 func SerializeAndHashForSignature(protectedHeaderCbor, unprotectedHeaderCbor, payloadCbor []byte) (hash []byte, err error) {

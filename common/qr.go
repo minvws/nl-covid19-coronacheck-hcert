@@ -52,43 +52,42 @@ func MarshalQREncoded(signedCWT *CWT) ([]byte, error) {
 	return prefixedProof, nil
 }
 
-func UnmarshalQREncoded(proofPrefixed []byte) (*CWT, error) {
+func UnmarshalQREncoded(proofPrefixed []byte) (cwt *CWT, contextId byte, err error) {
 	// Extract context identifier
 	contextId, proofEUBase45, err := extractContextId(proofPrefixed)
 	if err != nil {
-		return nil, err
+		return nil, 0x00, err
 	}
 
 	if contextId != '1' {
-		return nil, errors.Errorf("Unrecognized QR context identifier")
+		return nil, 0x00, errors.Errorf("Unrecognized QR context identifier")
 	}
 
 	// EUBase45 decode proof
 	proofCompressed, err := eubase45.EUBase45Decode(proofEUBase45)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not EUBase45 decode QR", 0)
+		return nil, 0x00, errors.WrapPrefix(err, "Could not EUBase45 decode QR", 0)
 	}
 
 	// Deflate proof
 	br := bytes.NewReader(proofCompressed)
 	zr, err := zlib.NewReader(br)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not create zlib reader", 0)
+		return nil, 0x00, errors.WrapPrefix(err, "Could not create zlib reader", 0)
 	}
 
 	proofCbor, err := ioutil.ReadAll(zr)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not decompress QR", 0)
+		return nil, 0x00, errors.WrapPrefix(err, "Could not decompress QR", 0)
 	}
 
 	// Unmarshal CWT
-	var cwt *CWT
 	err = cbor.Unmarshal(proofCbor, &cwt)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal QR as CWT", 0)
+		return nil, 0x00, errors.WrapPrefix(err, "Could not CBOR unmarshal QR as CWT", 0)
 	}
 
-	return cwt, nil
+	return cwt, contextId, nil
 }
 
 func HasEUPrefix(bts []byte) bool {

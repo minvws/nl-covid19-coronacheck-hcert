@@ -97,8 +97,8 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 		Issuer:         spec.Issuer,
 		ExpirationTime: spec.ExpirationTime,
 		IssuedAt:       spec.IssuedAt,
-		HCert: &common.HealthCertificate{
-			DGCv1: dgcCbor,
+		HCert: &common.RawHealthCertificate{
+			DCC: dgcCbor,
 		},
 	}
 
@@ -115,8 +115,8 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 
 	// Build the yet unsigned CWT
 	unsigned = &common.CWT{
-		Protected:   protectedHeaderCbor,
-		Payload:     payloadCbor,
+		Protected: protectedHeaderCbor,
+		Payload:   payloadCbor,
 	}
 
 	return unsigned, hash, nil

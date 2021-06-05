@@ -20,13 +20,18 @@ func New(findIssuerPk common.FindIssuerPkFunc) *Verifier {
 	}
 }
 
-func (v *Verifier) VerifyQREncoded(proofPrefixed []byte) error {
-	cwt, err := common.UnmarshalQREncoded(proofPrefixed)
+func (v *Verifier) VerifyQREncoded(proofPrefixed []byte) (hcert *common.HealthCertificate, err error) {
+	cwt, contextId, err := common.UnmarshalQREncoded(proofPrefixed)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return v.Verify(cwt)
+	err = v.Verify(cwt)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not verify proof", 0)
+	}
+
+	return common.ReadCWT(cwt, contextId)
 }
 
 func (v *Verifier) Verify(cwt *common.CWT) (err error) {
