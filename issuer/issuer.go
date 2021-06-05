@@ -1,14 +1,9 @@
 package issuer
 
 import (
-	"crypto/sha256"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
-)
-
-const (
-	COSE_SIGN1_CONTEXT = "Signature1"
 )
 
 type Signer interface {
@@ -112,21 +107,11 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal CWT payload", 0)
 	}
 
-	// Gather, serialize and hash the data that needs to be signed
-	toSign := []interface{}{
-		COSE_SIGN1_CONTEXT,
-		protectedHeaderCbor,
-		unprotectedHeaderCbor,
-		payloadCbor,
-	}
-
-	serializedForSigning, err := cbor.Marshal(toSign)
+	// Calculate the hash over the CWT
+	hash, err = common.SerializeAndHashForSignature(protectedHeaderCbor, unprotectedHeaderCbor, payloadCbor)
 	if err != nil {
-		return nil, nil, errors.WrapPrefix(err, "Could not CBOR serialize for signing", 0)
+		return nil, nil, err
 	}
-
-	hashArr := sha256.Sum256(serializedForSigning)
-	hash = hashArr[:]
 
 	// Build the yet unsigned CWT
 	unsigned = &common.CWT{
