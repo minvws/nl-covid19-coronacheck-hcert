@@ -1,11 +1,14 @@
 package main
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/holder"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/verifier"
 	"testing"
 	"time"
 )
@@ -34,13 +37,26 @@ func TestSmoke(t *testing.T) {
 	}
 
 	// Read
-	foo, err := holder.ReadQREncoded(qr)
+	h := holder.New()
+
+	_, err = h.ReadQREncoded(qr)
 	if err != nil {
 		fmt.Println(err.(*errors.Error).ErrorStack())
 		t.Fatal("Could not read back QR encoded credential:", err.Error())
 	}
 
-	fmt.Println(string(foo))
+	// Verify
+	findIssuerPk := func(kid []byte) ([]interface{}, error) {
+		pemCertBlock, _ := pem.Decode(certificatePem)
+		cert, _ := x509.ParseCertificate(pemCertBlock.Bytes)
+		return []interface{}{cert.PublicKey}, nil
+	}
+
+	v := verifier.New(findIssuerPk)
+	err = v.VerifyQREncoded(qr)
+	if err != nil {
+		t.Fatal("Could not verify proof that was just issued:", err.Error())
+	}
 }
 
 var certificatePem = []byte(`

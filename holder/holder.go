@@ -7,16 +7,24 @@ import (
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 )
 
-func ReadQREncoded(proofPrefixed []byte) (dgcJson []byte, err error) {
+type Holder struct {
+
+}
+
+func New() *Holder {
+	return &Holder{}
+}
+
+func (h *Holder) ReadQREncoded(proofPrefixed []byte) (dgcJson []byte, err error) {
 	cwt, err := common.UnmarshalQREncoded(proofPrefixed)
 	if err != nil {
 		return nil, err
 	}
 
-	return Read(cwt)
+	return h.Read(cwt)
 }
 
-func Read(cwt *common.CWT) (hcertJson []byte, err error) {
+func (h *Holder) Read(cwt *common.CWT) (hcertJson []byte, err error) {
 	payload, err := common.UnmarshalCWTPayload(cwt.Payload)
 	if err != nil {
 		return nil, err

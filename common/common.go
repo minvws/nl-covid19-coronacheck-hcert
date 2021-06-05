@@ -12,6 +12,10 @@ const (
 	ALG_PS256          = -37
 )
 
+// FindIssuerPkFunc must return a pk of type *ecdsa.PublicKey or *rsa.PublicKey
+// Due to potential (intentional) kid collisions, more than one public key can be returned
+type FindIssuerPkFunc func(kid []byte) (pk []interface{}, err error)
+
 type CWT struct {
 	_           struct{} `cbor:",toarray"`
 	Protected   []byte
@@ -21,8 +25,9 @@ type CWT struct {
 }
 
 type CWTHeader struct {
-	Alg int    `cbor:"1,keyasint,omitempty"`
-	KID []byte `cbor:"4,keyasint,omitempty"`
+	// KID is a pointer to a byte slice, so the entire sturct can be compared with an empty value
+	KID *[]byte `cbor:"4,keyasint,omitempty"`
+	Alg int     `cbor:"1,keyasint,omitempty"`
 }
 
 type CWTPayload struct {
