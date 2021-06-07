@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/holder"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
@@ -30,7 +31,13 @@ func TestSmoke(t *testing.T) {
 		IssuedAt:       time.Now().UTC().Unix(),
 		ExpirationTime: time.Now().AddDate(0, 0, 28).UTC().Unix(),
 
-		DCC: map[string]interface{}{"foo": "bar"},
+		DCC: &common.DCC{
+			Version:     "1.0.0",
+			DateOfBirth: "01-01-1970",
+			Name: &common.DCCName{
+				StandardisedFamilyName: "WAT",
+			},
+		},
 	})
 	if err != nil {
 		t.Fatal("Could not issue QR encoded:", err.Error())

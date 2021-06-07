@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-errors/errors"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"net/http"
@@ -24,9 +25,9 @@ type server struct {
 }
 
 type GetCredentialRequest struct {
-	KeyUsage       string                 `json:"keyUsage"`
-	ExpirationTime string                 `json:"expirationTime"`
-	DGC            map[string]interface{} `json:"dgc"`
+	KeyUsage       string      `json:"keyUsage"`
+	ExpirationTime string      `json:"expirationTime"`
+	DCC            *common.DCC `json:"dgc"`
 }
 
 type GetCredentialResponse struct {
@@ -85,8 +86,8 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(credentialRequest.DGC) == 0 {
-		writeError(w, errors.Errorf("Refusing to sign empty DCC"))
+	if credentialRequest.DCC == nil {
+		writeError(w, errors.Errorf("DCC was not present in request"))
 		return
 	}
 
@@ -102,7 +103,7 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 		Issuer:         "NL",
 		IssuedAt:       unixNow,
 		ExpirationTime: expirationTime.Unix(),
-		DCC:            credentialRequest.DGC,
+		DCC:            credentialRequest.DCC,
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not issue credential", 0))

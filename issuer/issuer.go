@@ -22,7 +22,7 @@ type IssueSpecification struct {
 	IssuedAt       int64
 	ExpirationTime int64
 
-	DCC map[string]interface{}
+	DCC *common.DCC
 }
 
 func New(signer Signer) *Issuer {
