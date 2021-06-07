@@ -21,77 +21,51 @@ func New(findIssuerPk common.FindIssuerPkFunc) *Verifier {
 }
 
 func (v *Verifier) VerifyQREncoded(proofPrefixed []byte) (hcert *common.HealthCertificate, err error) {
-	cwt, contextId, err := common.UnmarshalQREncoded(proofPrefixed)
+	cwt, err := common.UnmarshalQREncoded(proofPrefixed)
 	if err != nil {
 		return nil, err
 	}
 
-	err = v.Verify(cwt)
-	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not verify proof", 0)
-	}
-
-	return common.ReadCWT(cwt, contextId)
+	return v.Verify(cwt)
 }
 
-func (v *Verifier) Verify(cwt *common.CWT) (err error) {
+func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err error) {
 	// Unmarshal protected header
 	var protectedHeader *common.CWTHeader
 	err = cbor.Unmarshal(cwt.Protected, &protectedHeader)
 	if err != nil {
-		return errors.WrapPrefix(err, "Could not CBOR unmarshal protected header for verification", 0)
+		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal protected header for verification", 0)
 	}
 
 	if protectedHeader == nil {
-		return errors.Errorf("No protected header is present in CWT")
+		return nil, errors.Errorf("No protected header is present in CWT")
 	}
 
 	// Try to find the KID and public key(s)
 	kid, err := findKID(protectedHeader, &cwt.Unprotected)
 	if err != nil {
-		return errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
+		return nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
 	}
 
 	pks, err := v.findIssuerPk(kid)
 	if err != nil {
-		return errors.WrapPrefix(err, "Could not find key identifier for verification", 0)
-	}
-
-	// Serialize and hash the CWT, or use empty bstr if not present
-	unprotectedHeaderCbor := make([]byte, 0)
-	if cwt.Unprotected != (common.CWTHeader{}) {
-		unprotectedHeaderCbor, err = cbor.Marshal(cwt.Unprotected)
-		if err != nil {
-			return errors.WrapPrefix(err, "Could not CBOR marshal unprotected header for verification", 0)
-		}
+		return nil, errors.WrapPrefix(err, "Could not find key identifier for verification", 0)
 	}
 
 	// Calculate the CWT hash
-	hash, err := common.SerializeAndHashForSignature(cwt.Protected, unprotectedHeaderCbor, cwt.Payload)
+	hash, err := common.SerializeAndHashForSignature(cwt.Unprotected, cwt.Protected, cwt.Payload)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Try to verify with all public keys; which in practice is one key
-	for _, pk := range pks {
-		// Default error
-		err = errors.Errorf("Encountered invalid public key type in trusted key store")
-
-		switch pk := pk.(type) {
-		case *ecdsa.PublicKey:
-			err = verifyECDSASignature(protectedHeader.Alg, pk, hash, cwt.Signature)
-
-		case *rsa.PublicKey:
-			err = verifyRSASignature(protectedHeader.Alg, pk, hash, cwt.Signature)
-		}
-
-		// Check for successful validation
-		if err == nil {
-			return nil
-		}
+	err = verifySignature(protectedHeader.Alg, pks, hash, cwt.Signature)
+	if err != nil {
+		return nil, err
 	}
 
-	return errors.WrapPrefix(err, "Could not verify signature", 0)
+	// Unmarshal verified payload and metadata
+	return common.ReadCWT(cwt)
 }
 
 func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHeader) (kid []byte, err error) {
@@ -107,6 +81,33 @@ func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHea
 	}
 
 	return kid, nil
+}
+
+func verifySignature(alg int, pks []interface{}, hash, signature []byte) (err error) {
+	if len(pks) == 0 {
+		return errors.Errorf("No public keys to verify with")
+	}
+
+	for _, pk := range pks {
+		// Default error
+		err = errors.Errorf("Encountered invalid public key type in trusted key store")
+
+		switch pk := pk.(type) {
+		case *ecdsa.PublicKey:
+			err = verifyECDSASignature(alg, pk, hash, signature)
+
+		case *rsa.PublicKey:
+			err = verifyRSASignature(alg, pk, hash, signature)
+		}
+
+		// Check for successful validation
+		if err == nil {
+			return nil
+		}
+	}
+
+	// Return last verification error
+	return errors.WrapPrefix(err, "Could not verify signature", 0)
 }
 
 func verifyECDSASignature(alg int, pk *ecdsa.PublicKey, hash, signature []byte) error {

@@ -12,10 +12,10 @@ func New() *Holder {
 }
 
 func (h *Holder) ReadQREncoded(proofPrefixed []byte) (hcert *common.HealthCertificate, err error) {
-	cwt, contextId, err := common.UnmarshalQREncoded(proofPrefixed)
+	cwt, err := common.UnmarshalQREncoded(proofPrefixed)
 	if err != nil {
 		return nil, err
 	}
 
-	return common.ReadCWT(cwt, contextId)
+	return common.ReadCWT(cwt)
 }
