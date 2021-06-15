@@ -28,6 +28,13 @@ type CWTPayload struct {
 	HCert *RawHealthCertificate `cbor:"-260,keyasint"`
 }
 
+type cwtPayloadWithFloatTimestamps struct {
+	Issuer         string  `cbor:"1,keyasint"`
+	ExpirationTime float64 `cbor:"4,keyasint"`
+	IssuedAt       float64 `cbor:"6,keyasint"`
+
+	HCert *RawHealthCertificate `cbor:"-260,keyasint"`
+}
 type RawHealthCertificate struct {
 	// Halt unmarshalling here, so CWT verification can take place first
 	DCC cbor.RawMessage `cbor:"1,keyasint"`
@@ -75,7 +82,20 @@ func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
 	var payload *CWTPayload
 	err = cbor.Unmarshal(cwt.Payload, &payload)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal CWT payload", 0)
+		// Try to parse the CWT with float timestamps, then put it back into the regular structure
+		var altPayload *cwtPayloadWithFloatTimestamps
+		altErr := cbor.Unmarshal(cwt.Payload, &altPayload)
+		if altErr != nil {
+			// Use the original error, as it is more likely to be of use
+			return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal CWT payload", 0)
+		}
+
+		payload = &CWTPayload{
+			Issuer:         altPayload.Issuer,
+			ExpirationTime: int64(altPayload.ExpirationTime),
+			IssuedAt:       int64(altPayload.IssuedAt),
+			HCert:          altPayload.HCert,
+		}
 	}
 
 	if payload.HCert == nil || payload.HCert.DCC == nil {
