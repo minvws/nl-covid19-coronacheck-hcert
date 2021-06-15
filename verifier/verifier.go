@@ -49,7 +49,7 @@ func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err
 
 	pks, err := v.findIssuerPk(kid)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not find key identifier for verification", 0)
+		return nil, errors.WrapPrefix(err, "Could not find key for verification", 0)
 	}
 
 	// Calculate the CWT hash
