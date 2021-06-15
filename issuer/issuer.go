@@ -73,13 +73,10 @@ func (iss *Issuer) Issue(spec *IssueSpecification) (signed *common.CWT, err erro
 }
 
 func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash []byte, err error) {
-	// Use an empty unprotected header
-	unprotectedHeaderCbor := common.CWTHeader{}
-
 	// Build and serialize the protected header
 	protectedHeader := &common.CWTHeader{
 		Alg: common.ALG_ES256,
-		KID: &kid,
+		KID: kid,
 	}
 
 	protectedHeaderCbor, err := cbor.Marshal(protectedHeader)
@@ -108,7 +105,7 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 	}
 
 	// Calculate the hash over the CWT
-	hash, err = common.SerializeAndHashForSignature(unprotectedHeaderCbor, protectedHeaderCbor, payloadCbor)
+	hash, err = common.SerializeAndHashForSignature(protectedHeaderCbor, payloadCbor)
 	if err != nil {
 		return nil, nil, err
 	}

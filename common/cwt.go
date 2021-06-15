@@ -15,9 +15,8 @@ type CWT struct {
 }
 
 type CWTHeader struct {
-	// KID is a pointer to a byte slice, so the entire struct can be compared with an empty value
-	KID *[]byte `cbor:"4,keyasint,omitempty"`
-	Alg int     `cbor:"1,keyasint,omitempty"`
+	KID []byte `cbor:"4,keyasint,omitempty"`
+	Alg int    `cbor:"1,keyasint,omitempty"`
 }
 
 type CWTPayload struct {
@@ -48,21 +47,12 @@ type HealthCertificate struct {
 	DCC               *DCC   `json:"dcc"`
 }
 
-func SerializeAndHashForSignature(unprotectedHeader CWTHeader, protectedHeaderCbor, payloadCbor []byte) (hash []byte, err error) {
-	// Serialize and hash the CWT, or use empty byte string value if empty
-	unprotectedHeaderCbor := make([]byte, 0)
-	if unprotectedHeader != (CWTHeader{}) {
-		unprotectedHeaderCbor, err = cbor.Marshal(unprotectedHeader)
-		if err != nil {
-			return nil, errors.WrapPrefix(err, "Could not CBOR marshal unprotected header", 0)
-		}
-	}
-
-	// Gather, serialize and hash the data that is or needs to be signed
+func SerializeAndHashForSignature(protectedHeaderCbor, payloadCbor []byte) (hash []byte, err error) {
+	// Gather, serialize and hash the data that is verified or needs to be signed
 	toHash := []interface{}{
 		COSE_SIGN1_CONTEXT,
 		protectedHeaderCbor,
-		unprotectedHeaderCbor,
+		[]byte{},
 		payloadCbor,
 	}
 

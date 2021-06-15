@@ -53,7 +53,7 @@ func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err
 	}
 
 	// Calculate the CWT hash
-	hash, err := common.SerializeAndHashForSignature(cwt.Unprotected, cwt.Protected, cwt.Payload)
+	hash, err := common.SerializeAndHashForSignature(cwt.Protected, cwt.Payload)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +71,10 @@ func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err
 func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHeader) (kid []byte, err error) {
 	// Determine kid from protected and unprotected header
 	if protectedHeader.KID != nil {
-		kid = *protectedHeader.KID
+		kid = protectedHeader.KID
 	} else if unprotectedHeader.KID != nil {
-		kid = *unprotectedHeader.KID
-	}
-
-	if kid == nil {
+		kid = unprotectedHeader.KID
+	} else {
 		return nil, errors.Errorf("Could not find key identifier in protected or unprotected header")
 	}
 
