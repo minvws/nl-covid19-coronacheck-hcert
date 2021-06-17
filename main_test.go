@@ -35,7 +35,7 @@ func TestSmoke(t *testing.T) {
 			Version:     "1.0.0",
 			DateOfBirth: "01-01-1970",
 			Name: &common.DCCName{
-				StandardisedFamilyName: "WAT",
+				StandardizedFamilyName: "WAT",
 			},
 		},
 	})

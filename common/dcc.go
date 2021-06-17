@@ -17,9 +17,9 @@ type DCC struct {
 
 type DCCName struct {
 	FamilyName             string `cbor:"fn" json:"fn"`
-	StandardisedFamilyName string `cbor:"fnt" json:"fnt"`
+	StandardizedFamilyName string `cbor:"fnt" json:"fnt"`
 	GivenName              string `cbor:"gn" json:"gn"`
-	StandardisedGivenName  string `cbor:"gnt" json:"gnt"`
+	StandardizedGivenName  string `cbor:"gnt" json:"gnt"`
 }
 
 type DCCVaccination struct {
