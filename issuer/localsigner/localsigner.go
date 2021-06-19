@@ -1,7 +1,6 @@
 package localsigner
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -9,7 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/go-errors/errors"
-	"math/big"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"os"
 )
 
@@ -17,6 +16,11 @@ type LocalSigner struct {
 	certificate *x509.Certificate
 	key         *ecdsa.PrivateKey
 	kid         []byte
+}
+
+type LocalSignerConfiguration struct {
+	DSCCertificatePath string
+	DSCKeyPath         string
 }
 
 // NewFromFile doesn't do much sanity checking, as it isn't going to be used in production
@@ -83,27 +87,12 @@ func (ls *LocalSigner) GetKID(keyUsage string) ([]byte, error) {
 }
 
 // Sign doesn't do much sanity checking, as it isn't going to be used in production
-func (ls *LocalSigner) Sign(hash []byte) ([]byte, error) {
+func (ls *LocalSigner) Sign(keyUsage string, hash []byte) ([]byte, error) {
 	r, s, err := ecdsa.Sign(rand.Reader, ls.key, hash)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
 	}
 
-	keyByteSize := ls.key.Curve.Params().BitSize / 8
-	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)
-
+	signature := common.ConvertSignatureComponents(r, s, ls.key.Params())
 	return signature, nil
-}
-
-// See https://datatracker.ietf.org/doc/html/draft-ietf-cose-msg#section-8.1
-func i2osp(b *big.Int, n int) []byte {
-	ostr := b.Bytes()
-	if n > len(ostr) {
-		var buf bytes.Buffer
-		buf.Write(make([]byte, n-len(ostr))) // prepend 0s
-		buf.Write(ostr)
-		return buf.Bytes()
-	} else {
-		return ostr[:n]
-	}
 }

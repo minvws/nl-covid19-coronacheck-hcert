@@ -1,9 +1,12 @@
 package common
 
 import (
+	"bytes"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
+	"math/big"
 )
 
 type CWT struct {
@@ -108,4 +111,24 @@ func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
 		// Fix up inner map[interface{}]interface{} fields so value can be JSON serialized
 		DCC: dcc,
 	}, nil
+}
+
+func ConvertSignatureComponents(r, s *big.Int, params *elliptic.CurveParams) []byte {
+	keyByteSize := params.BitSize / 8
+	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)
+
+	return signature
+}
+
+// See https://datatracker.ietf.org/doc/html/draft-ietf-cose-msg#section-8.1
+func i2osp(b *big.Int, n int) []byte {
+	ostr := b.Bytes()
+	if n > len(ostr) {
+		var buf bytes.Buffer
+		buf.Write(make([]byte, n-len(ostr))) // prepend 0s
+		buf.Write(ostr)
+		return buf.Bytes()
+	} else {
+		return ostr[:n]
+	}
 }

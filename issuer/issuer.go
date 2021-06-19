@@ -8,7 +8,7 @@ import (
 
 type Signer interface {
 	GetKID(keyUsage string) (kid []byte, err error)
-	Sign(hash []byte) (signature []byte, err error)
+	Sign(keyUsage string, hash []byte) (signature []byte, err error)
 }
 
 type Issuer struct {
@@ -58,7 +58,7 @@ func (iss *Issuer) Issue(spec *IssueSpecification) (signed *common.CWT, err erro
 		return nil, err
 	}
 
-	signature, err := iss.signer.Sign(hash)
+	signature, err := iss.signer.Sign(spec.KeyUsage, hash)
 	if err != nil {
 		return nil, err
 	}

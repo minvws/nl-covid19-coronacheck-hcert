@@ -6,6 +6,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
+	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/hsmsigner"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"net/http"
 	"time"
@@ -15,8 +16,8 @@ type Configuration struct {
 	ListenAddress string
 	ListenPort    string
 
-	DSCCertificatePath string
-	DSCKeyPath         string
+	LocalSignerConfig *localsigner.LocalSignerConfiguration
+	HSMSignerConfig   *hsmsigner.SignerConfiguration
 }
 
 type server struct {
@@ -35,14 +36,23 @@ type GetCredentialResponse struct {
 }
 
 func Run(config *Configuration) error {
-	// Create local signer and issuer
-	var err error
-	localSigner, err := localsigner.NewFromFile(config.DSCCertificatePath, config.DSCKeyPath)
-	if err != nil {
-		return errors.WrapPrefix(err, "Could not create local signer", 0)
+	// Create either a local or HSM signer
+	var signer issuer.Signer
+	if config.HSMSignerConfig != nil {
+		var err error
+		signer, err = hsmsigner.New(config.HSMSignerConfig)
+		if err != nil {
+			return errors.WrapPrefix(err, "Could not create HSM signer", 0)
+		}
+	} else {
+		var err error
+		signer, err = localsigner.NewFromFile(config.LocalSignerConfig.DSCCertificatePath, config.LocalSignerConfig.DSCKeyPath)
+		if err != nil {
+			return errors.WrapPrefix(err, "Could not create local signer", 0)
+		}
 	}
 
-	iss := issuer.New(localSigner)
+	iss := issuer.New(signer)
 
 	// Serve
 	s := &server{
@@ -50,7 +60,7 @@ func Run(config *Configuration) error {
 		issuer: iss,
 	}
 
-	err = s.Serve()
+	err := s.Serve()
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not start server", 0)
 	}
@@ -123,5 +133,6 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeError(w http.ResponseWriter, err error) {
+	fmt.Println(err.Error())
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
