@@ -18,24 +18,24 @@ type LocalSigner struct {
 	kid         []byte
 }
 
-type LocalSignerConfiguration struct {
+type Configuration struct {
 	DSCCertificatePath string
 	DSCKeyPath         string
 }
 
 // NewFromFile doesn't do much sanity checking, as it isn't going to be used in production
-func NewFromFile(pemCertPath, pemKeyPath string) (*LocalSigner, error) {
+func NewFromFile(config *Configuration) (*LocalSigner, error) {
 	// Load certificate
-	pemCertBytes, err := os.ReadFile(pemCertPath)
+	pemCertBytes, err := os.ReadFile(config.DSCCertificatePath)
 	if err != nil {
-		msg := fmt.Sprintf("Could not read PEM certificate file %s", pemCertPath)
+		msg := fmt.Sprintf("Could not read PEM certificate file %s", config.DSCCertificatePath)
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 
 	// Load key
-	pemKeyBytes, err := os.ReadFile(pemKeyPath)
+	pemKeyBytes, err := os.ReadFile(config.DSCKeyPath)
 	if err != nil {
-		msg := fmt.Sprintf("Could not read PEM key file %s", pemKeyPath)
+		msg := fmt.Sprintf("Could not read PEM key file %s", config.DSCKeyPath)
 		return nil, errors.WrapPrefix(err, msg, 0)
 	}
 

@@ -22,7 +22,7 @@ type HSMSigner struct {
 	usageKeys map[string]*hsmKey
 }
 
-type SignerConfiguration struct {
+type Configuration struct {
 	PKCS11ModulePath string
 	TokenLabel       string
 	Pin              string
@@ -35,9 +35,6 @@ type KeyDescription struct {
 	KeyUsage        string
 	KeyID           int
 	KeyLabel        string
-
-	keypair crypto11.Signer
-	kid     []byte
 }
 
 type hsmKey struct {
@@ -51,7 +48,7 @@ type signatureSerialization struct {
 	S *big.Int
 }
 
-func New(config *SignerConfiguration) (*HSMSigner, error) {
+func New(config *Configuration) (*HSMSigner, error) {
 	// Create HSM context
 	ctx, err := crypto11.Configure(&crypto11.Config{
 		Path:       config.PKCS11ModulePath,
@@ -60,7 +57,7 @@ func New(config *SignerConfiguration) (*HSMSigner, error) {
 	})
 	if err != nil {
 		msg := fmt.Sprintf(
-			"Could not create pkcs11 context, wrong module path (%s) or token label (%s)",
+			"Could not create pkcs11 context, wrong PIN, module path (%s) or token label (%s)",
 			config.PKCS11ModulePath, config.TokenLabel,
 		)
 		return nil, errors.WrapPrefix(err, msg, 0)
@@ -152,8 +149,7 @@ func (hs *HSMSigner) GetKID(keyUsage string) (kid []byte, err error) {
 func loadCertificate(certificatePath string) (*x509.Certificate, *pem.Block, error) {
 	pemCertBytes, err := os.ReadFile(certificatePath)
 	if err != nil {
-		msg := fmt.Sprintf("Could not read PEM certificate file")
-		return nil, nil, errors.WrapPrefix(err, msg, 0)
+		return nil, nil, errors.WrapPrefix(err, "Could not read PEM certificate file", 0)
 	}
 
 	pemCertBlock, _ := pem.Decode(pemCertBytes)

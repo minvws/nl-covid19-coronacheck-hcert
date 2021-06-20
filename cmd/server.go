@@ -99,7 +99,7 @@ func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
 		fmt.Println("")
 
 		// Create the config
-		config.HSMSignerConfig = &hsmsigner.SignerConfiguration{
+		config.HSMSignerConfig = &hsmsigner.Configuration{
 			PKCS11ModulePath: viper.GetString("pkcs11-module-path"),
 			TokenLabel:       viper.GetString("token-label"),
 			Pin:              string(pin),
@@ -126,7 +126,7 @@ func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
 			},
 		}
 	} else {
-		config.LocalSignerConfig = &localsigner.LocalSignerConfiguration{
+		config.LocalSignerConfig = &localsigner.Configuration{
 			DSCCertificatePath: viper.GetString("dsc-certificate-path"),
 			DSCKeyPath:         viper.GetString("dsc-key-path"),
 		}

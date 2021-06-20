@@ -16,8 +16,8 @@ type Configuration struct {
 	ListenAddress string
 	ListenPort    string
 
-	LocalSignerConfig *localsigner.LocalSignerConfiguration
-	HSMSignerConfig   *hsmsigner.SignerConfiguration
+	LocalSignerConfig *localsigner.Configuration
+	HSMSignerConfig   *hsmsigner.Configuration
 }
 
 type server struct {
@@ -46,7 +46,7 @@ func Run(config *Configuration) error {
 		}
 	} else {
 		var err error
-		signer, err = localsigner.NewFromFile(config.LocalSignerConfig.DSCCertificatePath, config.LocalSignerConfig.DSCKeyPath)
+		signer, err = localsigner.NewFromFile(config.LocalSignerConfig)
 		if err != nil {
 			return errors.WrapPrefix(err, "Could not create local signer", 0)
 		}
