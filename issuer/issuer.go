@@ -85,7 +85,7 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 	}
 
 	// Serialize DCC separately, and then the rest of the payload
-	dgcCbor, err := cbor.Marshal(spec.DCC)
+	dccCbor, err := cbor.Marshal(spec.DCC)
 	if err != nil {
 		return nil, nil, errors.WrapPrefix(err, "Could not CBOR marshal DCC", 0)
 	}
@@ -95,7 +95,7 @@ func serialize(kid []byte, spec *IssueSpecification) (unsigned *common.CWT, hash
 		ExpirationTime: spec.ExpirationTime,
 		IssuedAt:       spec.IssuedAt,
 		HCert: &common.RawHealthCertificate{
-			DCC: dgcCbor,
+			DCC: dccCbor,
 		},
 	}
 

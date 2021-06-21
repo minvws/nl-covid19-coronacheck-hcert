@@ -28,7 +28,10 @@ type server struct {
 type GetCredentialRequest struct {
 	KeyUsage       string      `json:"keyUsage"`
 	ExpirationTime string      `json:"expirationTime"`
-	DCC            *common.DCC `json:"dgc"`
+	DCC            *common.DCC `json:"dcc"`
+
+	// DEPRECATED: Remove after inge4 has moved
+	DeprecatedDGC *common.DCC `json:"dgc"`
 }
 
 type GetCredentialResponse struct {
@@ -94,6 +97,11 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON unmarshal credentialRequest", 0))
 		return
+	}
+
+	// TODO: Remove this once inge4 has renamed
+	if credentialRequest.DCC == nil && credentialRequest.DeprecatedDGC != nil {
+		credentialRequest.DCC = credentialRequest.DeprecatedDGC
 	}
 
 	if credentialRequest.DCC == nil {
