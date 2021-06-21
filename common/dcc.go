@@ -10,9 +10,9 @@ type DCC struct {
 	DateOfBirth string `cbor:"dob" json:"dob"`
 
 	Name         *DCCName          `cbor:"nam" json:"nam"`
-	Vaccinations []*DCCVaccination `cbor:"v" json:"v"`
-	Tests        []*DCCTest        `cbor:"t" json:"t"`
-	Recoveries   []*DCCRecovery    `cbor:"r" json:"r"`
+	Vaccinations []*DCCVaccination `cbor:"v,omitempty" json:"v"`
+	Tests        []*DCCTest        `cbor:"t,omitempty" json:"t"`
+	Recoveries   []*DCCRecovery    `cbor:"r,omitempty" json:"r"`
 }
 
 type DCCName struct {
