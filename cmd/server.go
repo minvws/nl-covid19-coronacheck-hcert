@@ -53,15 +53,15 @@ func setServerFlags(cmd *cobra.Command) {
 
 	flags.String("hsm-vaccination-certificate-path", "", "HSM vaccination PEM encoded certificate path")
 	flags.Int("hsm-vaccination-key-id", 0, "HSM vaccination key ID")
-	flags.String("hsm-vaccination-key-label", "", "HSM vaccination key ID")
+	flags.String("hsm-vaccination-key-label", "", "HSM vaccination key label")
 
 	flags.String("hsm-test-certificate-path", "", "HSM test PEM encoded certificate path")
 	flags.Int("hsm-test-key-id", 0, "HSM test key ID")
-	flags.String("hsm-test-key-label", "", "HSM test key ID")
+	flags.String("hsm-test-key-label", "", "HSM test key label")
 
 	flags.String("hsm-recovery-certificate-path", "", "HSM recovery PEM encoded certificate path")
 	flags.Int("hsm-recovery-key-id", 0, "HSM recovery key ID")
-	flags.String("hsm-recovery-key-label", "", "HSM recovery key ID")
+	flags.String("hsm-recovery-key-label", "", "HSM recovery key label")
 }
 
 func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
