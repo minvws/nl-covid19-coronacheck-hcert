@@ -43,8 +43,8 @@ func setServerFlags(cmd *cobra.Command) {
 	flags.String("listen-port", "4002", "port at which to listen")
 
 	// Local signer
-	flags.String("dsc-certificate-path", "./Health_DSC_valid_for_vaccinations.pem", "DSC certficate PEM file for local signer")
-	flags.String("dsc-key-path", "./Health_DSC_valid_for_vaccinations.key", "DSC EC key PEM file for local signer")
+	flags.String("dsc-certificate-path", "./cert.pem", "DSC certficate PEM file for local signer")
+	flags.String("dsc-key-path", "./sk.pem", "DSC EC key PEM file for local signer")
 
 	// HSM signer
 	flags.Bool("enable-hsm", false, "Enable HSM signing")
