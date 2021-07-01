@@ -41,7 +41,6 @@ type DCCTest struct {
 	TestName                string `cbor:"nm" json:"nm"`
 	TestNameAndManufacturer string `cbor:"ma" json:"ma"`
 	DateTimeOfCollection    string `cbor:"sc" json:"sc"`
-	DateTimeOfTestResult    string `cbor:"dr" json:"dr"`
 	TestResult              string `cbor:"tr" json:"tr"`
 	TestingCentre           string `cbor:"tc" json:"tc"`
 	CountryOfVaccination    string `cbor:"co" json:"co"`
