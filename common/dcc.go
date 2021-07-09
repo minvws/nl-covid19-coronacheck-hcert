@@ -38,8 +38,8 @@ type DCCVaccination struct {
 type DCCTest struct {
 	DiseaseTargeted         string `cbor:"tg" json:"tg"`
 	TypeOfTest              string `cbor:"tt" json:"tt"`
-	TestName                string `cbor:"nm" json:"nm"`
-	TestNameAndManufacturer string `cbor:"ma" json:"ma"`
+	TestName                string `cbor:"nm,omitempty" json:"nm"`
+	TestNameAndManufacturer string `cbor:"ma,omitempty" json:"ma"`
 	DateTimeOfCollection    string `cbor:"sc" json:"sc"`
 	TestResult              string `cbor:"tr" json:"tr"`
 	TestingCentre           string `cbor:"tc" json:"tc"`
