@@ -9,15 +9,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
-	"path/filepath"
-	"strings"
 	"syscall"
 )
 
-var serverCmd = &cobra.Command{
-	Use: "server",
+var issuanceServerCmd = &cobra.Command{
+	Use: "issuance-server",
 	Run: func(cmd *cobra.Command, args []string) {
-		config, err := configureServer(cmd)
+		config, err := configureIssuanceServer(cmd)
 		if err != nil {
 			exitWithError(err)
 		}
@@ -30,11 +28,11 @@ var serverCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(serverCmd)
-	setServerFlags(serverCmd)
+	rootCmd.AddCommand(issuanceServerCmd)
+	setIssuanceServerFlags(issuanceServerCmd)
 }
 
-func setServerFlags(cmd *cobra.Command) {
+func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.SortFlags = false
 
@@ -64,23 +62,15 @@ func setServerFlags(cmd *cobra.Command) {
 	flags.String("hsm-recovery-key-label", "", "HSM recovery key label")
 }
 
-func configureServer(cmd *cobra.Command) (*server.Configuration, error) {
+func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) {
 	err := viper.BindPFlags(cmd.Flags())
 	if err != nil {
 		return nil, err
 	}
 
-	configPath := viper.GetString("config")
-	if configPath != "" {
-		dir, file := filepath.Dir(configPath), filepath.Base(configPath)
-		viper.SetConfigName(strings.TrimSuffix(file, filepath.Ext(file)))
-		viper.AddConfigPath(dir)
-
-		err = viper.ReadInConfig()
-		if err != nil {
-			msg := fmt.Sprintf("Could not read or apply config file %s", configPath)
-			return nil, errors.WrapPrefix(err, msg, 0)
-		}
+	err = readConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	config := &server.Configuration{

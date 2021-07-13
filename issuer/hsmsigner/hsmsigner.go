@@ -94,7 +94,7 @@ func New(config *Configuration) (*HSMSigner, error) {
 			return nil, errors.Errorf("Could not find key with id %d and label '%s'", kd.KeyID, kd.KeyLabel)
 		}
 
-		// TODO: Error out when we confirm this works
+		// TODO: VerificationError out when we confirm this works
 		if !certificatePk.Equal(keypair.Public()) {
 			fmt.Println("WARNING, REPORT THIS: HSM public key doesn't match certificate. This will be fatal in a future version")
 		}

@@ -73,7 +73,7 @@ func Run(config *Configuration) error {
 
 func (s *server) Serve() error {
 	addr := fmt.Sprintf("%s:%s", s.config.ListenAddress, s.config.ListenPort)
-	fmt.Printf("Starting server, listening at %s\n", addr)
+	fmt.Printf("Starting issuance server, listening at %s\n", addr)
 
 	handler := s.buildHandler()
 	err := http.ListenAndServe(addr, handler)
