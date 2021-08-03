@@ -13,8 +13,9 @@ import (
 )
 
 type Configuration struct {
-	ListenAddress string
-	ListenPort    string
+	ListenAddress     string
+	ListenPort        string
+	IssuerCountryCode string
 
 	LocalSignerConfig *localsigner.Configuration
 	HSMSignerConfig   *hsmsigner.Configuration
@@ -118,7 +119,7 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 
 	credential, err := s.issuer.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage:       credentialRequest.KeyUsage,
-		Issuer:         "NL",
+		Issuer:         s.config.IssuerCountryCode,
 		IssuedAt:       unixNow,
 		ExpirationTime: expirationTime.Unix(),
 		DCC:            credentialRequest.DCC,

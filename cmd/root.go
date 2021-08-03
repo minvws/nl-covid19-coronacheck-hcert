@@ -42,6 +42,6 @@ func readConfig() error {
 }
 
 func exitWithError(err error) {
-	_, _ = fmt.Fprint(os.Stderr, err.Error())
+	_, _ = fmt.Fprintln(os.Stderr, err.Error())
 	os.Exit(1)
 }

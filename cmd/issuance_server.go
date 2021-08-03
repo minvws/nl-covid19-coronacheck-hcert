@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
+	"regexp"
 	"syscall"
 )
 
@@ -39,6 +40,7 @@ func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags.String("config", "", "path to configuration file (JSON, TOML, YAML or INI)")
 	flags.String("listen-address", "localhost", "address at which to listen")
 	flags.String("listen-port", "4002", "port at which to listen")
+	flags.String("issuer-country-code", "NL", "the country code that is used as CWT issuer")
 
 	// Local signer
 	flags.String("dsc-certificate-path", "./cert.pem", "DSC certficate PEM file for local signer")
@@ -73,9 +75,15 @@ func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) 
 		return nil, err
 	}
 
+	issCC := viper.GetString("issuer-country-code")
+	if !regexp.MustCompile("^[A-Z]{2}$").MatchString(issCC) {
+		return nil, errors.Errorf("Invalid ISO 3166-1 alpha-2 issuer country code")
+	}
+
 	config := &server.Configuration{
-		ListenAddress: viper.GetString("listen-address"),
-		ListenPort:    viper.GetString("listen-port"),
+		ListenAddress:     viper.GetString("listen-address"),
+		ListenPort:        viper.GetString("listen-port"),
+		IssuerCountryCode: viper.GetString("issuer-country-code"),
 	}
 
 	if viper.GetBool("enable-hsm") {
