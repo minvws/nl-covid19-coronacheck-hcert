@@ -47,7 +47,7 @@ func Run(config *Configuration) error {
 		}
 	} else {
 		var err error
-		signer, err = localsigner.NewFromFile(config.LocalSignerConfig)
+		signer, err = localsigner.New(config.LocalSignerConfig)
 		if err != nil {
 			return errors.WrapPrefix(err, "Could not create local signer", 0)
 		}

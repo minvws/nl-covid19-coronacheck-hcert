@@ -3,64 +3,96 @@ package localsigner
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
+	issuercommon "github.com/minvws/nl-covid19-coronacheck-hcert/issuer/common"
 	"os"
 )
 
 type LocalSigner struct {
-	certificate *x509.Certificate
-	key         *ecdsa.PrivateKey
-	kid         []byte
+	usageKeys map[string]*localKey
 }
 
 type Configuration struct {
-	DSCCertificatePath string
-	DSCKeyPath         string
+	KeyDescriptions []*KeyDescription
 }
 
-// NewFromFile doesn't do much sanity checking, as it isn't going to be used in production
-func NewFromFile(config *Configuration) (*LocalSigner, error) {
-	// Load certificate
-	pemCertBytes, err := os.ReadFile(config.DSCCertificatePath)
-	if err != nil {
-		msg := fmt.Sprintf("Could not read PEM certificate file %s", config.DSCCertificatePath)
-		return nil, errors.WrapPrefix(err, msg, 0)
-	}
-
-	// Load key
-	pemKeyBytes, err := os.ReadFile(config.DSCKeyPath)
-	if err != nil {
-		msg := fmt.Sprintf("Could not read PEM key file %s", config.DSCKeyPath)
-		return nil, errors.WrapPrefix(err, msg, 0)
-	}
-
-	ls, err := New(pemCertBytes, pemKeyBytes)
-	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not create local signer", 0)
-	}
-
-	return ls, nil
+type KeyDescription struct {
+	KeyUsage        string
+	CertificatePath string
+	KeyPath         string
 }
 
-// New doesn't do much sanity checking, as it isn't going to be used in production
-func New(pemCertBytes, pemKeyBytes []byte) (*LocalSigner, error) {
-	// Load certificate
-	pemCertBlock, _ := pem.Decode(pemCertBytes)
-	if pemCertBlock == nil || pemCertBlock.Type != "CERTIFICATE" {
-		return nil, errors.Errorf("Could not parse PEM as certificate")
+type localKey struct {
+	kid         []byte
+	certificate *x509.Certificate
+	privateKey  *ecdsa.PrivateKey
+}
+
+func New(config *Configuration) (*LocalSigner, error) {
+	// Load every key
+	usageKeys := map[string]*localKey{}
+	for _, kd := range config.KeyDescriptions {
+		cert, kid, err := issuercommon.LoadDSCCertificateFile(kd.CertificatePath)
+		if err != nil {
+			msg := fmt.Sprintf("Could not load certificate file '%s'", kd.CertificatePath)
+			return nil, errors.WrapPrefix(err, msg, 0)
+		}
+
+		// Load key
+		privKey, err := loadPEMKeyFile(kd.KeyPath)
+		if err != nil {
+			msg := fmt.Sprintf("Could not read PEM key file %s", kd.KeyPath)
+			return nil, errors.WrapPrefix(err, msg, 0)
+		}
+
+		usageKeys[kd.KeyUsage] = &localKey{
+			kid:         kid,
+			certificate: cert,
+			privateKey:  privKey,
+		}
 	}
 
-	cert, err := x509.ParseCertificate(pemCertBlock.Bytes)
+	return &LocalSigner{
+		usageKeys: usageKeys,
+	}, nil
+}
+
+func (ls *LocalSigner) GetKID(keyUsage string) ([]byte, error) {
+	// Get key for this usage
+	key, ok := ls.usageKeys[keyUsage]
+	if !ok {
+		return nil, errors.Errorf("Could not find key for signing for usage %s", keyUsage)
+	}
+
+	return key.kid, nil
+}
+
+func (ls *LocalSigner) Sign(keyUsage string, hash []byte) ([]byte, error) {
+	// Get key for this usage
+	key, ok := ls.usageKeys[keyUsage]
+	if !ok {
+		return nil, errors.Errorf("Could not find key for signing for usage %s", keyUsage)
+	}
+
+	r, s, err := ecdsa.Sign(rand.Reader, key.privateKey, hash)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not parse certificate inside PEM", 0)
+		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
 	}
 
-	// Load private key
+	signature := common.ConvertSignatureComponents(r, s, key.privateKey.Params())
+	return signature, nil
+}
+
+func loadPEMKeyFile(keyPath string) (*ecdsa.PrivateKey, error) {
+	pemKeyBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	pemKeyBlock, _ := pem.Decode(pemKeyBytes)
 	if pemKeyBlock == nil || pemKeyBlock.Type != "EC PRIVATE KEY" {
 		return nil, errors.Errorf("Could not parse PEM as EC key")
@@ -71,28 +103,5 @@ func New(pemCertBytes, pemKeyBytes []byte) (*LocalSigner, error) {
 		return nil, errors.WrapPrefix(err, "Could not parse key inside PEM", 0)
 	}
 
-	// Calculate KID
-	certSum := sha256.Sum256(pemCertBlock.Bytes)
-	kid := certSum[0:8]
-
-	return &LocalSigner{
-		certificate: cert,
-		key:         key,
-		kid:         kid,
-	}, nil
-}
-
-func (ls *LocalSigner) GetKID(keyUsage string) ([]byte, error) {
-	return ls.kid, nil
-}
-
-// Sign doesn't do much sanity checking, as it isn't going to be used in production
-func (ls *LocalSigner) Sign(keyUsage string, hash []byte) ([]byte, error) {
-	r, s, err := ecdsa.Sign(rand.Reader, ls.key, hash)
-	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
-	}
-
-	signature := common.ConvertSignatureComponents(r, s, ls.key.Params())
-	return signature, nil
+	return key, nil
 }

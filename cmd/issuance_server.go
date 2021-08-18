@@ -43,8 +43,14 @@ func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags.String("issuer-country-code", "NL", "the country code that is used as CWT issuer")
 
 	// Local signer
-	flags.String("dsc-certificate-path", "./cert.pem", "DSC certficate PEM file for local signer")
-	flags.String("dsc-key-path", "./sk.pem", "DSC EC key PEM file for local signer")
+	flags.String("local-vaccination-certificate-path", "./cert.pem", "Local vaccination PEM encoded certificate path")
+	flags.String("local-vaccination-key-path", "./sk.pem", "Local vaccination PEM encoded key file")
+
+	flags.String("local-test-certificate-path", "./cert.pem", "Local test PEM encoded certificate path")
+	flags.String("local-test-key-path", "./sk.pem", "Local test PEM encoded key file")
+
+	flags.String("local-recovery-certificate-path", "./cert.pem", "Local recovery PEM encoded certificate path")
+	flags.String("local-recovery-key-path", "./sk.pem", "Local recovery PEM encoded key file")
 
 	// HSM signer
 	flags.Bool("enable-hsm", false, "Enable HSM signing")
@@ -87,48 +93,75 @@ func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) 
 	}
 
 	if viper.GetBool("enable-hsm") {
-		// Ask for HSM user PIN entry
-		// TODO: Encrypt in memory using github.com/awnumar/memguard
-		fmt.Print("Enter HSM user PIN: ")
-		pin, err := term.ReadPassword(syscall.Stdin)
+		hsmConfig, err := configureHSMSigner()
 		if err != nil {
-			return nil, errors.WrapPrefix(err, "Could not read PIN", 0)
+			return nil, err
 		}
-		fmt.Println("")
 
-		// Create the config
-		config.HSMSignerConfig = &hsmsigner.Configuration{
-			PKCS11ModulePath: viper.GetString("pkcs11-module-path"),
-			TokenLabel:       viper.GetString("token-label"),
-			Pin:              string(pin),
-
-			KeyDescriptions: []*hsmsigner.KeyDescription{
-				{
-					KeyUsage:        "vaccination",
-					CertificatePath: viper.GetString("hsm-vaccination-certificate-path"),
-					KeyID:           viper.GetInt("hsm-vaccination-key-id"),
-					KeyLabel:        viper.GetString("hsm-vaccination-key-label"),
-				},
-				{
-					KeyUsage:        "test",
-					CertificatePath: viper.GetString("hsm-test-certificate-path"),
-					KeyID:           viper.GetInt("hsm-test-key-id"),
-					KeyLabel:        viper.GetString("hsm-test-key-label"),
-				},
-				{
-					KeyUsage:        "recovery",
-					CertificatePath: viper.GetString("hsm-recovery-certificate-path"),
-					KeyID:           viper.GetInt("hsm-recovery-key-id"),
-					KeyLabel:        viper.GetString("hsm-recovery-key-label"),
-				},
-			},
-		}
+		config.HSMSignerConfig = hsmConfig
 	} else {
-		config.LocalSignerConfig = &localsigner.Configuration{
-			DSCCertificatePath: viper.GetString("dsc-certificate-path"),
-			DSCKeyPath:         viper.GetString("dsc-key-path"),
-		}
+		config.LocalSignerConfig = configureLocalSigner()
 	}
 
 	return config, nil
+}
+
+func configureLocalSigner() *localsigner.Configuration {
+	return &localsigner.Configuration{
+		KeyDescriptions: []*localsigner.KeyDescription{
+			{
+				KeyUsage:        "vaccination",
+				CertificatePath: viper.GetString("local-vaccination-certificate-path"),
+				KeyPath:         viper.GetString("local-vaccination-key-path"),
+			},
+			{
+				KeyUsage:        "test",
+				CertificatePath: viper.GetString("local-test-certificate-path"),
+				KeyPath:         viper.GetString("local-test-key-path"),
+			},
+			{
+				KeyUsage:        "recovery",
+				CertificatePath: viper.GetString("local-recovery-certificate-path"),
+				KeyPath:         viper.GetString("local-recovery-key-path"),
+			},
+		},
+	}
+}
+
+func configureHSMSigner() (*hsmsigner.Configuration, error) {
+	// Ask for HSM user PIN entry
+	fmt.Print("Enter HSM user PIN: ")
+	pin, err := term.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not read PIN", 0)
+	}
+	fmt.Println("")
+
+	// Create the config
+	return &hsmsigner.Configuration{
+		PKCS11ModulePath: viper.GetString("pkcs11-module-path"),
+		TokenLabel:       viper.GetString("token-label"),
+		Pin:              string(pin),
+
+		KeyDescriptions: []*hsmsigner.KeyDescription{
+			{
+				KeyUsage:        "vaccination",
+				CertificatePath: viper.GetString("hsm-vaccination-certificate-path"),
+				KeyID:           viper.GetInt("hsm-vaccination-key-id"),
+				KeyLabel:        viper.GetString("hsm-vaccination-key-label"),
+			},
+			{
+				KeyUsage:        "test",
+				CertificatePath: viper.GetString("hsm-test-certificate-path"),
+				KeyID:           viper.GetInt("hsm-test-key-id"),
+				KeyLabel:        viper.GetString("hsm-test-key-label"),
+			},
+			{
+				KeyUsage:        "recovery",
+				CertificatePath: viper.GetString("hsm-recovery-certificate-path"),
+				KeyID:           viper.GetInt("hsm-recovery-key-id"),
+				KeyLabel:        viper.GetString("hsm-recovery-key-label"),
+			},
+		},
+	}, nil
 }

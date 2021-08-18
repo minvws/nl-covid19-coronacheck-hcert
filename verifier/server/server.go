@@ -97,7 +97,7 @@ func (s *server) handleVerifySignature(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		response = &verificationResponse{
-			ValidSignature: true,
+			ValidSignature:    true,
 			HealthCertificate: hcert,
 		}
 	}

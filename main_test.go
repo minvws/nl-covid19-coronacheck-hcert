@@ -1,22 +1,35 @@
 package main
 
 import (
-	"crypto/x509"
-	"encoding/pem"
+	"bytes"
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/holder"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer"
+	issuercommon "github.com/minvws/nl-covid19-coronacheck-hcert/issuer/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/verifier"
 	"testing"
 	"time"
 )
 
-func TestSmoke(t *testing.T) {
+var certFile = "./testdata/cert.pem"
+var keyFile = "./testdata/key.pem"
+
+func TestIssueHoldVerify(t *testing.T) {
 	// Create local signer and issuer
-	ls, err := localsigner.New(certificatePem, keyPem)
+	lsc := &localsigner.Configuration{
+		KeyDescriptions: []*localsigner.KeyDescription{
+			{
+				KeyUsage:        "vaccination",
+				CertificatePath: certFile,
+				KeyPath:         keyFile,
+			},
+		},
+	}
+
+	ls, err := localsigner.New(lsc)
 	if err != nil {
 		t.Fatal("Could not create local signer:", err.Error())
 	}
@@ -53,9 +66,16 @@ func TestSmoke(t *testing.T) {
 	}
 
 	// Verify
-	findIssuerPk := func(kid []byte) ([]interface{}, error) {
-		pemCertBlock, _ := pem.Decode(certificatePem)
-		cert, _ := x509.ParseCertificate(pemCertBlock.Bytes)
+	findIssuerPk := func(targetKid []byte) ([]interface{}, error) {
+		cert, kid, err := issuercommon.LoadDSCCertificateFile(certFile)
+		if err != nil {
+			t.Fatal("Could not read certificate file:", err.Error())
+		}
+
+		if !bytes.Equal(targetKid, kid) {
+			t.Fatal("Incorrect KID encountered during verification")
+		}
+
 		return []interface{}{cert.PublicKey}, nil
 	}
 
@@ -65,25 +85,3 @@ func TestSmoke(t *testing.T) {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
 	}
 }
-
-var certificatePem = []byte(`
------BEGIN CERTIFICATE-----
-MIIBWjCCAQACEQCy6FwHOnp8fUZhXV3ThVfZMAkGByqGSM49BAEwMjEjMCEGA1UE
-AwwaTmF0aW9uYWwgQ1NDQSBvZiBGcmllc2xhbmQxCzAJBgNVBAYTAkZSMB4XDTIx
-MDUxODEwMjI1M1oXDTI2MDQwMjEwMjI1M1owMTEiMCAGA1UEAwwZRFNDIG51bWJl
-ciAxIG9mIEZyaWVzbGFuZDELMAkGA1UEBhMCRlIwWTATBgcqhkjOPQIBBggqhkjO
-PQMBBwNCAATpwuZ7bn9Y/uFSO0ZRpaMgDLqLhjxIugpCmqLuHjshzUfuvB1tsCcL
-eSSMFk7KUhlBXeGJqLbMAD8GHhZQVshxMAkGByqGSM49BAEDSQAwRgIhAN8zdG+4
-gCzTe1yXb9CGnWkIMdJ9CiP2bOq4e9dlnfUlAiEAnSsNcNEoh50C+LvdWmEu9IFn
-No/Vjg9ZQnfc+aGQmo8=
------END CERTIFICATE-----
-`)
-
-// This private key is only included for testing purposes
-var keyPem = []byte(`
------BEGIN EC PRIVATE KEY-----
-MHcCAQEEIPYIAeQvSV7gCxjzlQTBE63jQPxsEZfNNOjrcoP7c0qJoAoGCCqGSM49
-AwEHoUQDQgAE6cLme25/WP7hUjtGUaWjIAy6i4Y8SLoKQpqi7h47Ic1H7rwdbbAn
-C3kkjBZOylIZQV3hiai2zAA/Bh4WUFbIcQ==
------END EC PRIVATE KEY-----
-`)

@@ -5,16 +5,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
-	"crypto/x509"
 	"encoding/asn1"
-	"encoding/pem"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
+	issuercommon "github.com/minvws/nl-covid19-coronacheck-hcert/issuer/common"
 	"math/big"
-	"os"
 )
 
 type HSMSigner struct {
@@ -67,7 +64,7 @@ func New(config *Configuration) (*HSMSigner, error) {
 	usageKeys := map[string]*hsmKey{}
 	for _, kd := range config.KeyDescriptions {
 		// Load certificate for key
-		cert, pemCertBlock, err := loadCertificate(kd.CertificatePath)
+		cert, kid, err := issuercommon.LoadDSCCertificateFile(kd.CertificatePath)
 		if err != nil {
 			msg := fmt.Sprintf("Could not load certificate file '%s'", kd.CertificatePath)
 			return nil, errors.WrapPrefix(err, msg, 0)
@@ -80,10 +77,6 @@ func New(config *Configuration) (*HSMSigner, error) {
 		default:
 			return nil, errors.Errorf("Unsupported key type for '%s'", kd.CertificatePath)
 		}
-
-		// Calculate KID
-		certSum := sha256.Sum256(pemCertBlock.Bytes)
-		kid := certSum[0:8]
 
 		// Load HSM keypair
 		keypair, err := ctx.FindKeyPair([]byte{byte(kd.KeyID)}, []byte(kd.KeyLabel))
@@ -144,23 +137,4 @@ func (hs *HSMSigner) GetKID(keyUsage string) (kid []byte, err error) {
 	}
 
 	return key.kid, nil
-}
-
-func loadCertificate(certificatePath string) (*x509.Certificate, *pem.Block, error) {
-	pemCertBytes, err := os.ReadFile(certificatePath)
-	if err != nil {
-		return nil, nil, errors.WrapPrefix(err, "Could not read PEM certificate file", 0)
-	}
-
-	pemCertBlock, _ := pem.Decode(pemCertBytes)
-	if pemCertBlock == nil || pemCertBlock.Type != "CERTIFICATE" {
-		return nil, nil, errors.Errorf("Could not parse PEM as certificate")
-	}
-
-	cert, err := x509.ParseCertificate(pemCertBlock.Bytes)
-	if err != nil {
-		return nil, nil, errors.WrapPrefix(err, "Could not parse certificate inside PEM", 0)
-	}
-
-	return cert, pemCertBlock, nil
 }
