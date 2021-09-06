@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bytes"
+	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
@@ -66,22 +67,27 @@ func TestIssueHoldVerify(t *testing.T) {
 	}
 
 	// Verify
-	findIssuerPk := func(targetKid []byte) ([]interface{}, error) {
-		cert, kid, err := issuercommon.LoadDSCCertificateFile(certFile)
-		if err != nil {
-			t.Fatal("Could not read certificate file:", err.Error())
-		}
-
-		if !bytes.Equal(targetKid, kid) {
-			t.Fatal("Incorrect KID encountered during verification")
-		}
-
-		return []interface{}{cert.PublicKey}, nil
-	}
-
-	v := verifier.New(findIssuerPk)
+	v := verifier.New(createPksLookup(t))
 	_, err = v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
+	}
+}
+
+func createPksLookup(t *testing.T) verifier.PksLookup {
+	cert, kidBytes, err := issuercommon.LoadDSCCertificateFile(certFile)
+	if err != nil {
+		t.Fatal("Could not read certificate file:", err.Error())
+	}
+
+	pkBytes, _ := x509.MarshalPKIXPublicKey(cert.PublicKey)
+	kid := base64.StdEncoding.EncodeToString(kidBytes)
+
+	return verifier.PksLookup{
+		kid: {
+			{
+				SubjectPk: pkBytes,
+			},
+		},
 	}
 }

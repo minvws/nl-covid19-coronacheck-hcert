@@ -11,12 +11,12 @@ import (
 )
 
 type Verifier struct {
-	findIssuerPk common.FindIssuerPkFunc
+	pksLookup PksLookup
 }
 
-func New(findIssuerPk common.FindIssuerPkFunc) *Verifier {
+func New(pksLookup PksLookup) *Verifier {
 	return &Verifier{
-		findIssuerPk: findIssuerPk,
+		pksLookup: pksLookup,
 	}
 }
 
@@ -47,7 +47,7 @@ func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err
 		return nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
 	}
 
-	pks, err := v.findIssuerPk(kid)
+	pks, err := v.pksLookup.findIssuerPk(kid)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Could not find key for verification", 0)
 	}
@@ -81,7 +81,7 @@ func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHea
 	return kid, nil
 }
 
-func verifySignature(alg int, pks []interface{}, hash, signature []byte) (err error) {
+func verifySignature(alg int, pks []*AnnotatedEuropeanPk, hash, signature []byte) (err error) {
 	if len(pks) == 0 {
 		return errors.Errorf("No public keys to verify with")
 	}
@@ -90,7 +90,7 @@ func verifySignature(alg int, pks []interface{}, hash, signature []byte) (err er
 		// Default error
 		err = errors.Errorf("Encountered invalid public key type in trusted key store")
 
-		switch pk := pk.(type) {
+		switch pk := pk.LoadedPk.(type) {
 		case *ecdsa.PublicKey:
 			err = verifyECDSASignature(alg, pk, hash, signature)
 
