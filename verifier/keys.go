@@ -9,8 +9,10 @@ import (
 type PksLookup map[string][]*AnnotatedEuropeanPk
 
 type AnnotatedEuropeanPk struct {
-	SubjectPk []byte   `json:"subjectPk"`
-	KeyUsage  []string `json:"keyUsage"`
+	SubjectPk      []byte   `json:"subjectPk"`
+	KeyUsage       []string `json:"keyUsage"`
+	SubjectAltName string   `json:"san"`
+	IssuerAltName  string   `json:"ian"`
 
 	// LoadedPK is either of type *ecdsa.PublicKey or *rsa.PublicKey
 	LoadedPk interface{} `json:"-"`
