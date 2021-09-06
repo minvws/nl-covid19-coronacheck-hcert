@@ -20,52 +20,57 @@ func New(pksLookup PksLookup) *Verifier {
 	}
 }
 
-func (v *Verifier) VerifyQREncoded(proofPrefixed []byte) (hcert *common.HealthCertificate, err error) {
+func (v *Verifier) VerifyQREncoded(proofPrefixed []byte) (hcert *common.HealthCertificate, pk *AnnotatedEuropeanPk, err error) {
 	cwt, err := common.UnmarshalQREncoded(proofPrefixed)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return v.Verify(cwt)
 }
 
-func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, err error) {
+func (v *Verifier) Verify(cwt *common.CWT) (hcert *common.HealthCertificate, pk *AnnotatedEuropeanPk, err error) {
 	// Unmarshal protected header
 	var protectedHeader *common.CWTHeader
 	err = cbor.Unmarshal(cwt.Protected, &protectedHeader)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal protected header for verification", 0)
+		return nil, nil, errors.WrapPrefix(err, "Could not CBOR unmarshal protected header for verification", 0)
 	}
 
 	if protectedHeader == nil {
-		return nil, errors.Errorf("No protected header is present in CWT")
+		return nil, nil, errors.Errorf("No protected header is present in CWT")
 	}
 
 	// Try to find the KID and public key(s)
 	kid, err := findKID(protectedHeader, &cwt.Unprotected)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
+		return nil, nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
 	}
 
 	pks, err := v.pksLookup.findIssuerPk(kid)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not find key for verification", 0)
+		return nil, nil, errors.WrapPrefix(err, "Could not find key for verification", 0)
 	}
 
 	// Calculate the CWT hash
 	hash, err := common.SerializeAndHashForSignature(cwt.Protected, cwt.Payload)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Try to verify with all public keys; which in practice is one key
-	err = verifySignature(protectedHeader.Alg, pks, hash, cwt.Signature)
+	pk, err = verifySignature(protectedHeader.Alg, pks, hash, cwt.Signature)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Unmarshal verified payload and metadata
-	return common.ReadCWT(cwt)
+	hcert, err = common.ReadCWT(cwt)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return hcert, pk, nil
 }
 
 func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHeader) (kid []byte, err error) {
@@ -81,11 +86,12 @@ func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHea
 	return kid, nil
 }
 
-func verifySignature(alg int, pks []*AnnotatedEuropeanPk, hash, signature []byte) (err error) {
+func verifySignature(alg int, pks []*AnnotatedEuropeanPk, hash, signature []byte) (*AnnotatedEuropeanPk, error) {
 	if len(pks) == 0 {
-		return errors.Errorf("No public keys to verify with")
+		return nil, errors.Errorf("No public keys to verify with")
 	}
 
+	var err error
 	for _, pk := range pks {
 		// Default error
 		err = errors.Errorf("Encountered invalid public key type in trusted key store")
@@ -100,12 +106,12 @@ func verifySignature(alg int, pks []*AnnotatedEuropeanPk, hash, signature []byte
 
 		// Check for successful validation
 		if err == nil {
-			return nil
+			return pk, nil
 		}
 	}
 
 	// Return last verification error
-	return errors.WrapPrefix(err, "Could not verify signature", 0)
+	return nil, errors.WrapPrefix(err, "Could not verify signature", 0)
 }
 
 func verifyECDSASignature(alg int, pk *ecdsa.PublicKey, hash, signature []byte) error {

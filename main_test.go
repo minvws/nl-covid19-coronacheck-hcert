@@ -55,10 +55,17 @@ func TestSmoke(t *testing.T) {
 	}
 
 	// Verify
-	v := verifier.New(createPksLookup())
-	_, err = v.VerifyQREncoded(qr)
+	pksLookup := createPksLookup()
+	v := verifier.New(pksLookup)
+	_, pk, err := v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
+	}
+
+	for _, lookupPk := range pksLookup {
+		if pk != lookupPk[0] {
+			t.Fatal("Returned public key does not matching testing key")
+		}
 	}
 }
 
