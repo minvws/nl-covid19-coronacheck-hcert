@@ -89,7 +89,7 @@ func (s *server) handleVerifySignature(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var response *verificationResponse
-	hcert, err := s.verifier.VerifyQREncoded([]byte(req.Credential))
+	hcert, _, err := s.verifier.VerifyQREncoded([]byte(req.Credential))
 	if err != nil {
 		response = &verificationResponse{
 			ValidSignature:    false,
