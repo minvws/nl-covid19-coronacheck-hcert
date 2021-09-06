@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"github.com/go-errors/errors"
@@ -53,16 +55,27 @@ func TestSmoke(t *testing.T) {
 	}
 
 	// Verify
-	findIssuerPk := func(kid []byte) ([]interface{}, error) {
-		pemCertBlock, _ := pem.Decode(certificatePem)
-		cert, _ := x509.ParseCertificate(pemCertBlock.Bytes)
-		return []interface{}{cert.PublicKey}, nil
-	}
-
-	v := verifier.New(findIssuerPk)
+	v := verifier.New(createPksLookup())
 	_, err = v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
+	}
+}
+
+func createPksLookup() verifier.PksLookup {
+	pemCertBlock, _ := pem.Decode(certificatePem)
+	cert, _ := x509.ParseCertificate(pemCertBlock.Bytes)
+	pkBytes, _ := x509.MarshalPKIXPublicKey(cert.PublicKey)
+
+	certSum := sha256.Sum256(pemCertBlock.Bytes)
+	kid := base64.StdEncoding.EncodeToString(certSum[0:8])
+
+	return verifier.PksLookup{
+		kid: {
+			{
+				SubjectPk: pkBytes,
+			},
+		},
 	}
 }
 

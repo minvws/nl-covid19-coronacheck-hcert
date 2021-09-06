@@ -6,7 +6,7 @@ import (
 	"github.com/go-errors/errors"
 )
 
-type EuropeanPksLookup map[string][]*AnnotatedEuropeanPk
+type PksLookup map[string][]*AnnotatedEuropeanPk
 
 type AnnotatedEuropeanPk struct {
 	SubjectPk []byte   `json:"subjectPk"`
@@ -16,7 +16,7 @@ type AnnotatedEuropeanPk struct {
 	LoadedPk interface{} `json:"-"`
 }
 
-func (epks EuropeanPksLookup) FindAndCacheEuropean(kid []byte) ([]interface{}, error) {
+func (epks PksLookup) findIssuerPk(kid []byte) ([]*AnnotatedEuropeanPk, error) {
 	// Check if key id is present
 	kidB64 := base64.StdEncoding.EncodeToString(kid)
 	annotatedPks, ok := epks[kidB64]
@@ -25,7 +25,7 @@ func (epks EuropeanPksLookup) FindAndCacheEuropean(kid []byte) ([]interface{}, e
 	}
 
 	// Collect all (cached) public keys
-	pks := make([]interface{}, 0, len(annotatedPks))
+	pks := make([]*AnnotatedEuropeanPk, 0, len(annotatedPks))
 	for _, annotatedPk := range annotatedPks {
 		if annotatedPk.LoadedPk == nil {
 			// Allow parsing errors at this stage, so that kid collisions
@@ -37,7 +37,7 @@ func (epks EuropeanPksLookup) FindAndCacheEuropean(kid []byte) ([]interface{}, e
 			}
 		}
 
-		pks = append(pks, annotatedPk.LoadedPk)
+		pks = append(pks, annotatedPk)
 	}
 
 	if len(pks) == 0 {

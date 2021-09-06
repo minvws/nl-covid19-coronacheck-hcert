@@ -38,13 +38,13 @@ func Run(config *Configuration) error {
 		return errors.WrapPrefix(err, "Could not read verifier config file", 0)
 	}
 
-	var epks verifier.EuropeanPksLookup
+	var epks verifier.PksLookup
 	err = json.Unmarshal(pksJson, &epks)
 	if err != nil {
 		return errors.WrapPrefix(err, "Could not JSON unmarshal verifier config", 0)
 	}
 
-	verif := verifier.New(epks.FindAndCacheEuropean)
+	verif := verifier.New(epks)
 
 	// Serve
 	s := &server{
