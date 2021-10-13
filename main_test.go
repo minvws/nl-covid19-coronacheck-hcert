@@ -70,13 +70,13 @@ func TestIssueHoldVerify(t *testing.T) {
 	pksLookup := createPksLookup(t)
 	v := verifier.New(pksLookup)
 
-	_, pk, err := v.VerifyQREncoded(qr)
+	verified, err := v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
 	}
 
 	for _, lookupPk := range pksLookup {
-		if pk != lookupPk[0] {
+		if verified.PublicKey != lookupPk[0] {
 			t.Fatal("Returned public key does not matching testing key")
 		}
 	}
