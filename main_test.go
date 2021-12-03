@@ -11,6 +11,7 @@ import (
 	issuercommon "github.com/minvws/nl-covid19-coronacheck-hcert/issuer/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/verifier"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -38,7 +39,7 @@ func TestIssueHoldVerify(t *testing.T) {
 	iss := issuer.New(ls)
 
 	// Issue
-	qr, err := iss.IssueQREncoded(&issuer.IssueSpecification{
+	qr, proofIdentifier, err := iss.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage: "vaccination",
 
 		Issuer:         "NL",
@@ -73,6 +74,10 @@ func TestIssueHoldVerify(t *testing.T) {
 	verified, err := v.VerifyQREncoded(qr)
 	if err != nil {
 		t.Fatal("Could not verify proof that was just issued:", err.Error())
+	}
+
+	if !reflect.DeepEqual(proofIdentifier, verified.ProofIdentifier) {
+		t.Fatal("Issued proof identifier did not match verified proof identifier")
 	}
 
 	for _, lookupPk := range pksLookup {

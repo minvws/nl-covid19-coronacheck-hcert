@@ -31,18 +31,20 @@ func New(signer Signer) *Issuer {
 	}
 }
 
-func (iss *Issuer) IssueQREncoded(spec *IssueSpecification) ([]byte, error) {
+func (iss *Issuer) IssueQREncoded(spec *IssueSpecification) (qr, proofIdentifier []byte, err error) {
 	signed, err := iss.Issue(spec)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	signedQREncoded, err := common.MarshalQREncoded(signed)
 	if err != nil {
-		return nil, errors.WrapPrefix(err, "Could not QR encode credential", 0)
+		return nil, nil, errors.WrapPrefix(err, "Could not QR encode credential", 0)
 	}
 
-	return signedQREncoded, nil
+	proofIdentifier = common.CalculateProofIdentifier(signed)
+
+	return signedQREncoded, proofIdentifier, nil
 }
 
 // Issue intentionally doesn't support all the different COSE bells and whistles, and only does

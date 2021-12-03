@@ -33,7 +33,8 @@ type GetCredentialRequest struct {
 }
 
 type GetCredentialResponse struct {
-	Credential string `json:"credential"`
+	Credential      string `json:"credential"`
+	ProofIdentifier []byte `json:"proofIdentifier"`
 }
 
 func Run(config *Configuration) error {
@@ -109,7 +110,7 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	credential, err := s.issuer.IssueQREncoded(&issuer.IssueSpecification{
+	credential, proofIdentifier, err := s.issuer.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage:       credentialRequest.KeyUsage,
 		Issuer:         s.config.IssuerCountryCode,
 		IssuedAt:       unixNow,
@@ -122,7 +123,8 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseJson, err := json.Marshal(&GetCredentialResponse{
-		Credential: string(credential),
+		Credential:      string(credential),
+		ProofIdentifier: proofIdentifier,
 	})
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not JSON marshal credential response", 0))

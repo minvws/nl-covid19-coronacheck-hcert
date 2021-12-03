@@ -113,6 +113,12 @@ func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
 	}, nil
 }
 
+// CalculateProofIdentifier calculates the sha256 digest of the signature, truncated to 128 bits
+func CalculateProofIdentifier(cwt *CWT) []byte {
+	sigDigest := sha256.Sum256(cwt.Signature)
+	return sigDigest[:16]
+}
+
 func ConvertSignatureComponents(r, s *big.Int, params *elliptic.CurveParams) []byte {
 	keyByteSize := params.BitSize / 8
 	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)

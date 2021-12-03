@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/sha256"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/common"
@@ -77,14 +76,10 @@ func (v *Verifier) Verify(cwt *common.CWT) (*VerifiedHCert, error) {
 		return nil, err
 	}
 
-	// Calculate sha256 digest of signature, truncated to 128 bits
-	sigDigest := sha256.Sum256(cwt.Signature)
-	proofIdentifier := sigDigest[:16]
-
 	return &VerifiedHCert{
 		HealthCertificate: hcert,
 		PublicKey:         pk,
-		ProofIdentifier:   proofIdentifier,
+		ProofIdentifier:   common.CalculateProofIdentifier(cwt),
 	}, nil
 }
 
