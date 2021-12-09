@@ -83,7 +83,7 @@ func (ls *LocalSigner) Sign(keyUsage string, hash []byte) ([]byte, error) {
 		return nil, errors.WrapPrefix(err, "Could not sign hash", 0)
 	}
 
-	signature := common.ConvertSignatureComponents(r, s, key.privateKey.Params())
+	signature := common.CanonicalSignatureBytes(r, s, key.privateKey.Params())
 	return signature, nil
 }
 

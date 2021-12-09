@@ -42,7 +42,7 @@ func (iss *Issuer) IssueQREncoded(spec *IssueSpecification) (qr, proofIdentifier
 		return nil, nil, errors.WrapPrefix(err, "Could not QR encode credential", 0)
 	}
 
-	proofIdentifier = common.CalculateProofIdentifier(signed)
+	proofIdentifier = common.CalculateProofIdentifier(signed.Signature)
 
 	return signedQREncoded, proofIdentifier, nil
 }

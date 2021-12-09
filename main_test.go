@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	issuercommon "github.com/minvws/nl-covid19-coronacheck-hcert/issuer/common"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/issuer/localsigner"
 	"github.com/minvws/nl-covid19-coronacheck-hcert/verifier"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -84,6 +86,36 @@ func TestIssueHoldVerify(t *testing.T) {
 		if verified.PublicKey != lookupPk[0] {
 			t.Fatal("Returned public key does not matching testing key")
 		}
+	}
+}
+
+func TestSignatureCanonicalization(t *testing.T) {
+	// Test some pregenerated signature components
+	rBytes, _ := base64.StdEncoding.DecodeString("mvR6wvbbKv8iEgKP1K6QOd4qs8NG4g5bU3EZx8veWLM=")
+	highSBytes, _ := base64.StdEncoding.DecodeString("mFMXaeGX+Unt2GURs6L2Mos0X3+JY0ShkLU1NMvldvY=")
+	canonicalSigB64 := "mvR6wvbbKv8iEgKP1K6QOd4qs8NG4g5bU3EZx8veWLNnrOiVHmgGtxInmu5MXQnNMbKbLh20WeNjBJWOMH2uWw=="
+
+	r := new(big.Int).SetBytes(rBytes)
+	highS := new(big.Int).SetBytes(highSBytes)
+
+	sigBytes := common.CanonicalSignatureBytes(r, highS, elliptic.P256().Params())
+	if base64.StdEncoding.EncodeToString(sigBytes) != canonicalSigB64 {
+		t.Fatal("Incorrect canonicalization of ECDSA P-256 s component")
+	}
+
+	// Test that verifying a high-s QR returns the correct proof identifier based on low-s
+	highSQR := []byte(`HC1:NCFO30620FFWTWGVLKG997LLJTQ*NQ2ZOX*4C7B0XKBJCKR93F368RF$63F36NML%6Y50.FKMTKO/EZKEZ96446C56GVC*JC7463W5Y961A6//6TPCBEC7ZKW.CF8CW.C5WEH1B2UAI3DF8CI3D2WE27BN/P+L2148BUU30R4S7K6SXP3FAJUMAV.Q3 48ZQRV44A0L7MOVPLHL COH9B2024QAA+F/9TIZF+OF6SM.0RSH6$K4R1J%SOV50U504EW%S9K1`)
+
+	pksLookup := createPksLookup(t)
+	v := verifier.New(pksLookup)
+
+	verified, err := v.VerifyQREncoded(highSQR)
+	if err != nil {
+		t.Fatal("Could not verify QR with high S")
+	}
+
+	if base64.StdEncoding.EncodeToString(verified.ProofIdentifier) != "FnDyemxSgralp3zx1VO20g==" {
+		t.Fatal("QR-code with high S component did not return the correct proof identifier")
 	}
 }
 

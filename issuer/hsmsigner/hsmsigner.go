@@ -126,7 +126,7 @@ func (hs *HSMSigner) Sign(keyUsage string, hash []byte) ([]byte, error) {
 		return nil, errors.WrapPrefix(err, "Could not ASN1 unmarshal signature", 0)
 	}
 
-	signature := common.ConvertSignatureComponents(components.R, components.S, key.params)
+	signature := common.CanonicalSignatureBytes(components.R, components.S, key.params)
 	return signature, nil
 }
 

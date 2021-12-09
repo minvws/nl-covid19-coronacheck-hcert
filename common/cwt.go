@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"fmt"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"math/big"
@@ -114,16 +115,33 @@ func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
 }
 
 // CalculateProofIdentifier calculates the sha256 digest of the signature, truncated to 128 bits
-func CalculateProofIdentifier(cwt *CWT) []byte {
-	sigDigest := sha256.Sum256(cwt.Signature)
+func CalculateProofIdentifier(signature []byte) []byte {
+	sigDigest := sha256.Sum256(signature)
 	return sigDigest[:16]
 }
 
-func ConvertSignatureComponents(r, s *big.Int, params *elliptic.CurveParams) []byte {
-	keyByteSize := params.BitSize / 8
-	signature := append(i2osp(r, keyByteSize), i2osp(s, keyByteSize)...)
+func CanonicalSignatureBytes(r, s *big.Int, curve *elliptic.CurveParams) []byte {
+	keyByteSize := curve.BitSize / 8
+
+	canonicalS := canonicalizeSComponent(s, curve)
+	signature := append(i2osp(r, keyByteSize), i2osp(canonicalS, keyByteSize)...)
 
 	return signature
+}
+
+// CanonicalizeSComponent takes the s-component of an ECDSA signature and makes sure the variant
+//  is used which is less than half of the curve order, preventing signature malleability on verification
+func canonicalizeSComponent(s *big.Int, curve *elliptic.CurveParams) *big.Int {
+	smallS := new(big.Int).Set(s)
+	halfN := new(big.Int).Rsh(curve.N, 1)
+	if s.Cmp(halfN) == 1 {
+		fmt.Println("ouch")
+		smallS = smallS.Mod(new(big.Int).Neg(s), curve.N)
+	} else {
+		fmt.Println("nah")
+	}
+
+	return smallS
 }
 
 // See https://datatracker.ietf.org/doc/html/draft-ietf-cose-msg#section-8.1
