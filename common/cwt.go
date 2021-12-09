@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"fmt"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"math/big"
@@ -135,10 +134,7 @@ func canonicalizeSComponent(s *big.Int, curve *elliptic.CurveParams) *big.Int {
 	smallS := new(big.Int).Set(s)
 	halfN := new(big.Int).Rsh(curve.N, 1)
 	if s.Cmp(halfN) == 1 {
-		fmt.Println("ouch")
 		smallS = smallS.Mod(new(big.Int).Neg(s), curve.N)
-	} else {
-		fmt.Println("nah")
 	}
 
 	return smallS
