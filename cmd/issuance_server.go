@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 	"regexp"
+	"strings"
 	"syscall"
 )
 
@@ -42,32 +43,15 @@ func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags.String("listen-port", "4002", "port at which to listen")
 	flags.String("issuer-country-code", "NL", "the country code that is used as CWT issuer")
 
-	// Local signer
-	flags.String("local-vaccination-certificate-path", "./cert.pem", "Local vaccination PEM encoded certificate path")
-	flags.String("local-vaccination-key-path", "./sk.pem", "Local vaccination PEM encoded key file")
-
-	flags.String("local-test-certificate-path", "./cert.pem", "Local test PEM encoded certificate path")
-	flags.String("local-test-key-path", "./sk.pem", "Local test PEM encoded key file")
-
-	flags.String("local-recovery-certificate-path", "./cert.pem", "Local recovery PEM encoded certificate path")
-	flags.String("local-recovery-key-path", "./sk.pem", "Local recovery PEM encoded key file")
+	// Local signer defaults
+	flags.String("default-local-key-usages", "vaccination,test,recovery", "Default local key usages, when no keys map has been provided through configuration")
+	flags.String("default-local-certificate-path", "./cert.pem", "Default local PEM encoded certificate path, when no keys map has been provided through configuration")
+	flags.String("default-local-key-path", "./sk.pem", "Default local PEM encoded key file, when no keys map has been provided through configuration")
 
 	// HSM signer
 	flags.Bool("enable-hsm", false, "Enable HSM signing")
 	flags.String("pkcs11-module-path", "", "Path to PKCS11 module")
 	flags.String("token-label", "", "Label of token to use")
-
-	flags.String("hsm-vaccination-certificate-path", "", "HSM vaccination PEM encoded certificate path")
-	flags.Int("hsm-vaccination-key-id", 0, "HSM vaccination key ID")
-	flags.String("hsm-vaccination-key-label", "", "HSM vaccination key label")
-
-	flags.String("hsm-test-certificate-path", "", "HSM test PEM encoded certificate path")
-	flags.Int("hsm-test-key-id", 0, "HSM test key ID")
-	flags.String("hsm-test-key-label", "", "HSM test key label")
-
-	flags.String("hsm-recovery-certificate-path", "", "HSM recovery PEM encoded certificate path")
-	flags.Int("hsm-recovery-key-id", 0, "HSM recovery key ID")
-	flags.String("hsm-recovery-key-label", "", "HSM recovery key label")
 }
 
 func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) {
@@ -93,39 +77,41 @@ func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) 
 	}
 
 	if viper.GetBool("enable-hsm") {
-		hsmConfig, err := configureHSMSigner()
-		if err != nil {
-			return nil, err
-		}
-
-		config.HSMSignerConfig = hsmConfig
+		config.HSMSignerConfig, err = configureHSMSigner()
 	} else {
-		config.LocalSignerConfig = configureLocalSigner()
+		config.LocalSignerConfig, err = configureLocalSigner()
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	return config, nil
 }
 
-func configureLocalSigner() *localsigner.Configuration {
-	return &localsigner.Configuration{
-		KeyDescriptions: []*localsigner.KeyDescription{
-			{
-				KeyUsage:        "vaccination",
-				CertificatePath: viper.GetString("local-vaccination-certificate-path"),
-				KeyPath:         viper.GetString("local-vaccination-key-path"),
-			},
-			{
-				KeyUsage:        "test",
-				CertificatePath: viper.GetString("local-test-certificate-path"),
-				KeyPath:         viper.GetString("local-test-key-path"),
-			},
-			{
-				KeyUsage:        "recovery",
-				CertificatePath: viper.GetString("local-recovery-certificate-path"),
-				KeyPath:         viper.GetString("local-recovery-key-path"),
-			},
-		},
+func configureLocalSigner() (*localsigner.Configuration, error) {
+	usageKeys := map[string]*localsigner.Key{}
+	err := viper.UnmarshalKey("local-usage-keys", &usageKeys)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not unmarshal local usage keys configuration", 0)
 	}
+
+	// When no usage keys have been supplied, use the default key supplied via the command line
+	if len(usageKeys) == 0 {
+		fmt.Println("No keys map was supplied, falling back to default key...")
+
+		usages := viper.GetString("default-local-key-usages")
+		for _, usage := range strings.Split(usages, ",") {
+			usageKeys[usage] = &localsigner.Key{
+				CertificatePath: viper.GetString("default-local-certificate-path"),
+				KeyPath:         viper.GetString("default-local-key-path"),
+			}
+		}
+	}
+
+	return &localsigner.Configuration{
+		UsageKeys: usageKeys,
+	}, nil
 }
 
 func configureHSMSigner() (*hsmsigner.Configuration, error) {
@@ -137,31 +123,23 @@ func configureHSMSigner() (*hsmsigner.Configuration, error) {
 	}
 	fmt.Println("")
 
+	// Load usage keys and make sure there's at least one
+	usageKeys := map[string]*hsmsigner.Key{}
+	err = viper.UnmarshalKey("hsm-usage-keys", &usageKeys)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not unmarshal HSM usage keys configuration", 0)
+	}
+
+	if len(usageKeys) == 0 {
+		return nil, errors.Errorf("Did not encounter a HSM usage key map with at least one key present")
+	}
+
 	// Create the config
 	return &hsmsigner.Configuration{
 		PKCS11ModulePath: viper.GetString("pkcs11-module-path"),
 		TokenLabel:       viper.GetString("token-label"),
 		Pin:              string(pin),
 
-		KeyDescriptions: []*hsmsigner.KeyDescription{
-			{
-				KeyUsage:        "vaccination",
-				CertificatePath: viper.GetString("hsm-vaccination-certificate-path"),
-				KeyID:           viper.GetInt("hsm-vaccination-key-id"),
-				KeyLabel:        viper.GetString("hsm-vaccination-key-label"),
-			},
-			{
-				KeyUsage:        "test",
-				CertificatePath: viper.GetString("hsm-test-certificate-path"),
-				KeyID:           viper.GetInt("hsm-test-key-id"),
-				KeyLabel:        viper.GetString("hsm-test-key-label"),
-			},
-			{
-				KeyUsage:        "recovery",
-				CertificatePath: viper.GetString("hsm-recovery-certificate-path"),
-				KeyID:           viper.GetInt("hsm-recovery-key-id"),
-				KeyLabel:        viper.GetString("hsm-recovery-key-label"),
-			},
-		},
+		UsageKeys: usageKeys,
 	}, nil
 }

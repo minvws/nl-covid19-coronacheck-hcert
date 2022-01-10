@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/asn1"
+	"encoding/hex"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-errors/errors"
@@ -16,7 +17,7 @@ import (
 
 type HSMSigner struct {
 	ctx       *crypto11.Context
-	usageKeys map[string]*hsmKey
+	usageKeys map[string]*Key
 }
 
 type Configuration struct {
@@ -24,17 +25,14 @@ type Configuration struct {
 	TokenLabel       string
 	Pin              string
 
-	KeyDescriptions []*KeyDescription
+	UsageKeys map[string]*Key
 }
 
-type KeyDescription struct {
-	CertificatePath string
-	KeyUsage        string
-	KeyID           int
-	KeyLabel        string
-}
+type Key struct {
+	CertificatePath string `mapstructure:"certificate-path"`
+	KeyIDHex        string `mapstructure:"key-id-hex"`
+	KeyLabel        string `mapstructure:"key-label"`
 
-type hsmKey struct {
 	kid     []byte
 	keypair crypto11.Signer
 	params  *elliptic.CurveParams
@@ -61,12 +59,11 @@ func New(config *Configuration) (*HSMSigner, error) {
 	}
 
 	// Load every key
-	usageKeys := map[string]*hsmKey{}
-	for _, kd := range config.KeyDescriptions {
+	for _, key := range config.UsageKeys {
 		// Load certificate for key
-		cert, kid, err := issuercommon.LoadDSCCertificateFile(kd.CertificatePath)
+		cert, kid, err := issuercommon.LoadDSCCertificateFile(key.CertificatePath)
 		if err != nil {
-			msg := fmt.Sprintf("Could not load certificate file '%s'", kd.CertificatePath)
+			msg := fmt.Sprintf("Could not load certificate file '%s'", key.CertificatePath)
 			return nil, errors.WrapPrefix(err, msg, 0)
 		}
 
@@ -75,34 +72,37 @@ func New(config *Configuration) (*HSMSigner, error) {
 		case *ecdsa.PublicKey:
 			certificatePk = tpk
 		default:
-			return nil, errors.Errorf("Unsupported key type for '%s'", kd.CertificatePath)
+			return nil, errors.Errorf("Unsupported key type for '%s'", key.CertificatePath)
 		}
 
 		// Load HSM keypair
-		keypair, err := ctx.FindKeyPair([]byte{byte(kd.KeyID)}, []byte(kd.KeyLabel))
+		keyID, err := hex.DecodeString(key.KeyIDHex)
+		if err != nil {
+			msg := fmt.Sprintf("Could not decode key id hex '%s' for label '%s'", key.KeyIDHex, key.KeyLabel)
+			return nil, errors.WrapPrefix(err, msg, 0)
+		}
+
+		keypair, err := ctx.FindKeyPair(keyID, []byte(key.KeyLabel))
 		if err != nil {
 			return nil, errors.WrapPrefix(err, "Could not find key due to error", 0)
 		}
 		if keypair == nil {
-			return nil, errors.Errorf("Could not find key with id %d and label '%s'", kd.KeyID, kd.KeyLabel)
+			return nil, errors.Errorf("Could not find key with id hex '%s' and label '%s'", key.KeyIDHex, key.KeyLabel)
 		}
 
-		// TODO: VerificationError out when we confirm this works
 		if !certificatePk.Equal(keypair.Public()) {
-			fmt.Println("WARNING, REPORT THIS: HSM public key doesn't match certificate. This will be fatal in a future version")
+			return nil, errors.Errorf("HSM supplied public key with id hex '%s' and label '%s' doesn't match certificate file '%s'.", key.KeyIDHex, key.KeyLabel, key.CertificatePath)
 		}
 
-		// Put hsmKey into usage lookup
-		usageKeys[kd.KeyUsage] = &hsmKey{
-			kid:     kid,
-			keypair: keypair,
-			params:  keypair.Public().(*ecdsa.PublicKey).Params(),
-		}
+		// Save the gathered information into the key
+		key.kid = kid
+		key.keypair = keypair
+		key.params = keypair.Public().(*ecdsa.PublicKey).Params()
 	}
 
 	return &HSMSigner{
 		ctx:       ctx,
-		usageKeys: usageKeys,
+		usageKeys: config.UsageKeys,
 	}, nil
 }
 

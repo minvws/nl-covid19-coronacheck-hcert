@@ -34,29 +34,17 @@ Usage:
   coronacheck-hcert issuance-server [flags]
 
 Flags:
-      --config string                               path to configuration file (JSON, TOML, YAML or INI)
-      --listen-address string                       address at which to listen (default "localhost")
-      --listen-port string                          port at which to listen (default "4002")
-      --issuer-country-code string                  the country code that is used as CWT issuer (default "NL")
-      --local-vaccination-certificate-path string   Local vaccination PEM encoded certificate path (default "./cert.pem")
-      --local-vaccination-key-path string           Local vaccination PEM encoded key file (default "./sk.pem")
-      --local-test-certificate-path string          Local test PEM encoded certificate path (default "./cert.pem")
-      --local-test-key-path string                  Local test PEM encoded key file (default "./sk.pem")
-      --local-recovery-certificate-path string      Local recovery PEM encoded certificate path (default "./cert.pem")
-      --local-recovery-key-path string              Local recovery PEM encoded key file (default "./sk.pem")
-      --enable-hsm                                  Enable HSM signing
-      --pkcs11-module-path string                   Path to PKCS11 module
-      --token-label string                          Label of token to use
-      --hsm-vaccination-certificate-path string     HSM vaccination PEM encoded certificate path
-      --hsm-vaccination-key-id int                  HSM vaccination key ID
-      --hsm-vaccination-key-label string            HSM vaccination key label
-      --hsm-test-certificate-path string            HSM test PEM encoded certificate path
-      --hsm-test-key-id int                         HSM test key ID
-      --hsm-test-key-label string                   HSM test key label
-      --hsm-recovery-certificate-path string        HSM recovery PEM encoded certificate path
-      --hsm-recovery-key-id int                     HSM recovery key ID
-      --hsm-recovery-key-label string               HSM recovery key label
-  -h, --help                                        help for issuance-server
+      --config string                           path to configuration file (JSON, TOML, YAML or INI)
+      --listen-address string                   address at which to listen (default "localhost")
+      --listen-port string                      port at which to listen (default "4002")
+      --issuer-country-code string              the country code that is used as CWT issuer (default "NL")
+      --default-local-key-usages string         Default local key usages, when no keys map has been provided through configuration (default "vaccination,test,recovery")
+      --default-local-certificate-path string   Default local PEM encoded certificate path, when no keys map has been provided through configuration (default "./cert.pem")
+      --default-local-key-path string           Default local PEM encoded key file, when no keys map has been provided through configuration (default "./sk.pem")
+      --enable-hsm                              Enable HSM signing
+      --pkcs11-module-path string               Path to PKCS11 module
+      --token-label string                      Label of token to use
+  -h, --help                                    help for issuance-server
 ```
 
 The `/get_credential` endpoint can then be used to sign HCERTs:
@@ -70,6 +58,57 @@ The `/get_credential` endpoint can then be used to sign HCERTs:
 
 {"credential":"HC1:NCF 10P90T9WTWGVLK-49NJ3B0J$OCC*AX*4ABB0XKBJCKR95F3 FM6003F3IT33Q4Y50.FK8ZKO/EZKEZ967L6C56GVC*JC1A6FA73W5Y96746TPCBEC7ZKW.CWOCW3ELPCG/DWOC/0A JC0/DKI949DMPCG/DOUC11A++97:EDOL9WEQDD+Q6TW6FA7C466KCN9E%961A6DL6FA7D46.JCP9EJY8L/5M/5546.96VF6.JCBECB1A-:8$966469L6OF6VX6FVCPD0KQEPD0LVC6JD846Y96E463W5SG6UPCBJCOT9+EDL8FHZ95/D QEALEN44:+C%69AECAWE:34: CJ.CZKE9440/D+34S9E5LEWJC0FD*V3AIA%G7ZM81G72A6J+9IG7/G8HS8 *8A69TH93T9M+927BBM4B89DW3TCSE:D93W HRST2EZ1DFACBC485S+H*EANVFBWRE8WT.8ZOC1UKAHA7*7QL64Z1OBT%TBR51Z.5BRV1CA$PJUU4V50U50QCW.HJH1"}
 ```
+
+#### Configuring multiple keys
+
+For ease during local development, the `default-local-key-usages`, `default-local-certificate-path` and `default-local-key-path` options allow to specify a single default key for the local signer.
+
+Keys for the HSM and multiple local keys can only be configured through a config file. The root of the config file should contain either a `local-usage-keys` or `hsm-usage-keys` entry. Local keys should contain a `certificate-path` and a `key-path`. HSM keys should contain a `certificate-path`, a `key-id-hex` and `key-label`. 
+
+See these two examples:
+
+```
+{
+  "local-usage-keys": {
+    "vaccination": {
+      "certificate-path": "Health_DSC_valid_for_vaccinations.pem",
+      "key-path": "Health_DSC_valid_for_vaccinations.key"
+    }
+    "recovery": {
+      "certificate-path": "Health_DSC_valid_for_recovery.pem",
+      "key-path": "Health_DSC_valid_for_recovery.key"
+    },
+    "test": {
+      "certificate-path": "Health_DSC_valid_for_test.pem",
+      "key-path": "Health_DSC_valid_for_test.key"
+    }
+  }
+} 
+```
+
+```
+{
+  "hsm-usage-keys": {
+    "vaccination": {
+      "certificate-path": "Health_DSC_valid_for_vaccinations.pem",
+      "key-id-hex": "01",
+      "key-label": "DSC-VACCINATION"
+    }
+    "recovery": {
+      "certificate-path": "Health_DSC_valid_for_recovery.pem",
+      "key-id-hex": "02",
+      "key-label": "DSC-RECOVERY"
+    },
+    "test": {
+      "certificate-path": "Health_DSC_valid_for_test.pem",
+      "key-id-hex": "0A",
+      "key-label": "DSC-TEST"
+    }
+  }
+}
+
+```
+
 
 ### Verification server
 

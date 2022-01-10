@@ -13,20 +13,17 @@ import (
 )
 
 type LocalSigner struct {
-	usageKeys map[string]*localKey
+	usageKeys map[string]*Key
 }
 
 type Configuration struct {
-	KeyDescriptions []*KeyDescription
+	UsageKeys map[string]*Key
 }
 
-type KeyDescription struct {
-	KeyUsage        string
-	CertificatePath string
-	KeyPath         string
-}
+type Key struct {
+	CertificatePath string `mapstructure:"certificate-path"`
+	KeyPath         string `mapstructure:"key-path"`
 
-type localKey struct {
 	kid         []byte
 	certificate *x509.Certificate
 	privateKey  *ecdsa.PrivateKey
@@ -34,30 +31,27 @@ type localKey struct {
 
 func New(config *Configuration) (*LocalSigner, error) {
 	// Load every key
-	usageKeys := map[string]*localKey{}
-	for _, kd := range config.KeyDescriptions {
-		cert, kid, err := issuercommon.LoadDSCCertificateFile(kd.CertificatePath)
+	for _, key := range config.UsageKeys {
+		cert, kid, err := issuercommon.LoadDSCCertificateFile(key.CertificatePath)
 		if err != nil {
-			msg := fmt.Sprintf("Could not load certificate file '%s'", kd.CertificatePath)
+			msg := fmt.Sprintf("Could not load certificate file '%s'", key.CertificatePath)
 			return nil, errors.WrapPrefix(err, msg, 0)
 		}
 
 		// Load key
-		privKey, err := loadPEMKeyFile(kd.KeyPath)
+		privKey, err := loadPEMKeyFile(key.KeyPath)
 		if err != nil {
-			msg := fmt.Sprintf("Could not read PEM key file %s", kd.KeyPath)
+			msg := fmt.Sprintf("Could not read PEM key file %s", key.KeyPath)
 			return nil, errors.WrapPrefix(err, msg, 0)
 		}
 
-		usageKeys[kd.KeyUsage] = &localKey{
-			kid:         kid,
-			certificate: cert,
-			privateKey:  privKey,
-		}
+		key.kid = kid
+		key.certificate = cert
+		key.privateKey = privKey
 	}
 
 	return &LocalSigner{
-		usageKeys: usageKeys,
+		usageKeys: config.UsageKeys,
 	}, nil
 }
 

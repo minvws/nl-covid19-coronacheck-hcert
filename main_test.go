@@ -24,9 +24,8 @@ var keyFile = "./testdata/key.pem"
 func TestIssueHoldVerify(t *testing.T) {
 	// Create local signer and issuer
 	lsc := &localsigner.Configuration{
-		KeyDescriptions: []*localsigner.KeyDescription{
-			{
-				KeyUsage:        "vaccination",
+		UsageKeys: map[string]*localsigner.Key{
+			"vaccination": {
 				CertificatePath: certFile,
 				KeyPath:         keyFile,
 			},
