@@ -44,9 +44,9 @@ func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags.String("issuer-country-code", "NL", "the country code that is used as CWT issuer")
 
 	// Local signer defaults
-	flags.String("default-local-key-usages", "vaccination,test,recovery", "Default local key usages, when no keys map has been provided through configuration")
-	flags.String("default-local-certificate-path", "./cert.pem", "Default local PEM encoded certificate path, when no keys map has been provided through configuration")
-	flags.String("default-local-key-path", "./sk.pem", "Default local PEM encoded key file, when no keys map has been provided through configuration")
+	flags.String("default-local-key-usages", "vaccination-lower,test-lower,recovery-lower", "Default local key usages, when no keys map has been provided through configuration")
+	flags.String("default-local-certificate-path", "./testdata/cert.pem", "Default local PEM encoded certificate path, when no keys map has been provided through configuration")
+	flags.String("default-local-key-path", "./testdata/key.pem", "Default local PEM encoded key file, when no keys map has been provided through configuration")
 
 	// HSM signer
 	flags.Bool("enable-hsm", false, "Enable HSM signing")
