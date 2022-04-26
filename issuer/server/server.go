@@ -13,9 +13,10 @@ import (
 )
 
 type Configuration struct {
-	ListenAddress     string
-	ListenPort        string
-	IssuerCountryCode string
+	ListenAddress      string
+	ListenPort         string
+	IssuerCountryCode  string
+	BackdateCWTSeconds int
 
 	LocalSignerConfig *localsigner.Configuration
 	HSMSignerConfig   *hsmsigner.Configuration
@@ -104,6 +105,8 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	unixNow := time.Now().Unix()
+	issuedAt := unixNow - int64(s.config.BackdateCWTSeconds)
+
 	expirationTime, err := time.Parse(time.RFC3339, credentialRequest.ExpirationTime)
 	if err != nil {
 		writeError(w, errors.WrapPrefix(err, "Could not parse expirationTime", 0))
@@ -113,7 +116,7 @@ func (s *server) handleGetCredential(w http.ResponseWriter, r *http.Request) {
 	credential, proofIdentifier, err := s.issuer.IssueQREncoded(&issuer.IssueSpecification{
 		KeyUsage:       credentialRequest.KeyUsage,
 		Issuer:         s.config.IssuerCountryCode,
-		IssuedAt:       unixNow,
+		IssuedAt:       issuedAt,
 		ExpirationTime: expirationTime.Unix(),
 		DCC:            credentialRequest.DCC,
 	})

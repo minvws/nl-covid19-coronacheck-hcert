@@ -42,6 +42,7 @@ func setIssuanceServerFlags(cmd *cobra.Command) {
 	flags.String("listen-address", "localhost", "address at which to listen")
 	flags.String("listen-port", "4002", "port at which to listen")
 	flags.String("issuer-country-code", "NL", "the country code that is used as CWT issuer")
+	flags.Int("backdate-cwt-seconds", 3600, "amount of seconds to backdate the CWT iat field with")
 
 	// Local signer defaults
 	flags.String("default-local-key-usages", "vaccination-lower,test-lower,recovery-lower", "Default local key usages, when no keys map has been provided through configuration")
@@ -71,9 +72,10 @@ func configureIssuanceServer(cmd *cobra.Command) (*server.Configuration, error) 
 	}
 
 	config := &server.Configuration{
-		ListenAddress:     viper.GetString("listen-address"),
-		ListenPort:        viper.GetString("listen-port"),
-		IssuerCountryCode: viper.GetString("issuer-country-code"),
+		ListenAddress:      viper.GetString("listen-address"),
+		ListenPort:         viper.GetString("listen-port"),
+		IssuerCountryCode:  viper.GetString("issuer-country-code"),
+		BackdateCWTSeconds: viper.GetInt("backdate-cwt-seconds"),
 	}
 
 	if viper.GetBool("enable-hsm") {
