@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/base64"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/go-errors/errors"
 	"math/big"
@@ -47,6 +48,7 @@ type HealthCertificate struct {
 	Issuer            string `json:"issuer"`
 	IssuedAt          int64  `json:"issuedAt"`
 	ExpirationTime    int64  `json:"expirationTime"`
+	KIDB64            string `json:"kid"`
 	DCC               *DCC   `json:"dcc"`
 }
 
@@ -71,6 +73,21 @@ func SerializeAndHashForSignature(protectedHeaderCbor, payloadCbor []byte) (hash
 }
 
 func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
+	// Unmarshal protected header
+	var protectedHeader *CWTHeader
+	err = cbor.Unmarshal(cwt.Protected, &protectedHeader)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Could not CBOR unmarshal protected header for verification", 0)
+	}
+
+	// Try to find the KID and marshal it as base64
+	kid, err := FindKID(protectedHeader, &cwt.Unprotected)
+	if err != nil {
+		return nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
+	}
+
+	kidB64 := base64.StdEncoding.EncodeToString(kid)
+
 	// Unmarshal payload
 	var payload *CWTPayload
 	err = cbor.Unmarshal(cwt.Payload, &payload)
@@ -107,10 +124,22 @@ func ReadCWT(cwt *CWT) (hcert *HealthCertificate, err error) {
 		Issuer:            payload.Issuer,
 		IssuedAt:          payload.IssuedAt,
 		ExpirationTime:    payload.ExpirationTime,
-
-		// Fix up inner map[interface{}]interface{} fields so value can be JSON serialized
-		DCC: dcc,
+		KIDB64:            kidB64,
+		DCC:               dcc,
 	}, nil
+}
+
+func FindKID(protectedHeader *CWTHeader, unprotectedHeader *CWTHeader) (kid []byte, err error) {
+	// Determine kid from protected and unprotected header
+	if protectedHeader.KID != nil {
+		kid = protectedHeader.KID
+	} else if unprotectedHeader.KID != nil {
+		kid = unprotectedHeader.KID
+	} else {
+		return nil, errors.Errorf("Could not find key identifier in protected or unprotected header")
+	}
+
+	return kid, nil
 }
 
 // CalculateProofIdentifier calculates the sha256 digest of the signature, truncated to 128 bits

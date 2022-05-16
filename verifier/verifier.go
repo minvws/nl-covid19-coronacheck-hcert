@@ -48,7 +48,7 @@ func (v *Verifier) Verify(cwt *common.CWT) (*VerifiedHCert, error) {
 	}
 
 	// Try to find the KID and public key(s)
-	kid, err := findKID(protectedHeader, &cwt.Unprotected)
+	kid, err := common.FindKID(protectedHeader, &cwt.Unprotected)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "Couldn't find CWT KID", 0)
 	}
@@ -81,19 +81,6 @@ func (v *Verifier) Verify(cwt *common.CWT) (*VerifiedHCert, error) {
 		PublicKey:         pk,
 		ProofIdentifier:   common.CalculateProofIdentifier(canonicalSignature),
 	}, nil
-}
-
-func findKID(protectedHeader *common.CWTHeader, unprotectedHeader *common.CWTHeader) (kid []byte, err error) {
-	// Determine kid from protected and unprotected header
-	if protectedHeader.KID != nil {
-		kid = protectedHeader.KID
-	} else if unprotectedHeader.KID != nil {
-		kid = unprotectedHeader.KID
-	} else {
-		return nil, errors.Errorf("Could not find key identifier in protected or unprotected header")
-	}
-
-	return kid, nil
 }
 
 func verifySignature(alg int, pks []*AnnotatedEuropeanPk, hash, signature []byte) (pk *AnnotatedEuropeanPk, canonicalSignature []byte, err error) {
